@@ -1,0 +1,117 @@
+#!/usr/bin/perl
+
+# ------------------------------------------------
+# flowd-shuffle
+#
+#  v1.0   4-22-08
+#  v1.01  7-21-08 fixed typo
+#  v1.02  3-19-12 flowNext is set to wvFlowCheck.pl to generate exporter summary cache
+#  v1.03  3-30-12 added support for flow-capture style nesting level (-N x)
+#
+# take a file from flowd format and move it into flow-tools format
+# ------------------------------------------------
+
+use strict;
+use POSIX;
+
+BEGIN { require '/etc/webview.conf'; WebviewConfiguration->import(); }
+
+our $ftFileTemplate = "v05.%Y-%m-%d.%H%M%S-0500";						# set timezone offset, if desired
+
+our $nestingLevels = {
+	-3 => '/%Y/%Y-%m/%Y-%m-%d',
+	-2 => '/%Y-%m/%Y-%m-%d',
+	-1 => '/%Y-%m-%d',
+	0 => '',
+	1 => '/%Y',
+	2 => '/%Y/%Y-%m',
+	3 => '/%Y/%Y-%m/%Y-%m-%d',
+};
+
+our $port;
+our $nest = $flowCaptureNesting;
+
+while (@ARGV) {
+	$_ = shift @ARGV;
+	if (/^-N$/) {
+		$nest = shift @ARGV;
+		die "invalid -N argument" if (! exists $nestingLevels->{$nest});
+	}
+	elsif (/^\d+$/) { $port = $_; }
+}
+
+our $flowSummary = $flowCheck;					# command to run on tmp- file before making the ft- file
+our $flowNext; 							# command to run on the ft- file
+
+our $flowDivvy;							# command to run on the tmp- file; if set, no ft- file is created by this script
+# our $flowDivvy = "/usr/local/netflow/bin/flow-divvy-$port";	# example
+
+our $flowdConf = sprintf($flowdConfTemplate, (defined $port) ? "-$port" : undef);	# where flowd.conf is
+our $flowdHup = "10";						# SIGUSR1
+our $flowdPeerStatus = "12";					# SIGUSR2
+
+# --- determine target file name
+
+my @ltime = localtime(time - ($period || 300) );		# $period comes from /etc/webview.conf
+
+my $ftDir = $flowDirPorts{$port};				# root directory
+
+$ftDir .= POSIX::strftime($nestingLevels->{$nest}, @ltime) if (defined $nest);	# directory nesting, if needed
+`mkdir -p $ftDir`;
+
+my $ftSuffix = POSIX::strftime($ftFileTemplate, @ltime);	# file name suffix
+
+my $ftTmpFile = "tmp-$ftSuffix";
+my $ftFile = "ft-$ftSuffix";
+
+# --- read flowd conf file to figure out where the pid file is
+
+our ($flowdPid, $flowdLog);
+
+open(IN, $flowdConf) || die "Could not read $flowdConf";
+while ( <IN> ) {
+	if (/^\s*logfile ["]?([^"\s]+)/) { $flowdLog = $1; }
+	if (/^\s*pidfile ["]?([^"\s]+)/) { $flowdPid = $1; }
+}
+close(IN);
+
+exit if (! -f $flowdLog);					# exit silently on empty file
+die "$flowdPid does not exist: $!" if (! -f $flowdPid);
+
+# --- send a hup signal to flowd
+
+my $pid = `cat $flowdPid`;
+`mv $flowdLog $flowdLog.tmp`;
+die "$flowdPid ($pid) invalid: $!" if (! kill $flowdHup, $pid);
+die "$flowdPid ($pid) invalid: $!" if (! kill $flowdPeerStatus, $pid);
+
+`chmod 644 $flowdSyslog`;
+
+# --- import the flowd data into flowtools format
+
+print "$flowdReader -c -f $flowdLog.tmp | $flowImport -f 2 -V 5 -z 1 > $ftDir/$ftTmpFile\n";
+`$flowdReader -c $flowdLog.tmp | $flowImport -f 2 -V 5 -z 1 > $ftDir/$ftTmpFile`;
+
+unlink("$flowdLog.tmp");
+
+# ---- pass control to something else, if defined
+
+if (-x $flowSummary) {
+	print "system \"$flowSummary $ftDir/$ftTmpFile\"\n";
+	system("$flowSummary $ftDir/$ftTmpFile >/dev/null 2>&1");
+}
+
+if (-x $flowDivvy) {				# if there is some divvy'ing to do...
+	print "exec \"$flowDivvy $ftDir/$ftTmpFile\"\n";
+	exec("$flowDivvy $ftDir/$ftTmpFile");
+}
+else {						# simply rename the file...
+	print "mv $ftDir/$ftTmpFile $ftDir/$ftFile\n";
+	`mv $ftDir/$ftTmpFile $ftDir/$ftFile`;
+
+	if (-x $flowNext) {			# and optionally run another command
+		exec("$flowNext $ftDir/$ftFile >/dev/null 2>&1");
+	}
+}
+
+

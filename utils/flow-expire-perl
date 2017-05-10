@@ -1,0 +1,122 @@
+#!/usr/bin/perl
+
+# replacement for flow-tools' own flow-expire.
+#
+# I found that the original flow-expire was removing the wrong files when directories got very large, and when files
+# were being dropped into the directory as the flow-expire process was running. Rather than fix flow-expire, I wrote
+# a perl replacement.
+
+use strict;
+
+our ($expire_count, $expire_size, $sim, @dirs);
+
+while ($_ = shift @ARGV) {
+	if (/^-e$/) {
+		$expire_count = shift @ARGV || &bomb;
+		if ($expire_count =~ /^(\d+)\s*([dh])/) {
+			if ($2 eq 'd')		{ $expire_count = $1 * 288; }
+			elsif ($2 eq 'h')	{ $expire_count = $1 * 12; }
+		}
+		elsif ($expire_count =~ /\D/) { &bomb; }
+	}
+	elsif (/^-E$/) {
+		$expire_size = shift @ARGV || &bomb;
+		if ($expire_size =~ /^(\d+)\s*([bKMG])$/) {
+			if ($2 eq 'b')		{ $expire_size = $1; }
+			elsif ($2 eq 'K')	{ $expire_size = $1 * 1024; }
+			elsif ($2 eq 'M')	{ $expire_size = $1 * 1024 * 1024; }
+			elsif ($2 eq 'G')	{ $expire_size = $1 * 1024 * 1024 * 1024; }
+		}
+		elsif ($expire_size =~ /\D/) { &bomb; }
+	}
+	elsif (/^-w$/) {
+		my $working_dir = shift @ARGV || &bomb;
+		&bomb if (! -d $working_dir);
+		push(@dirs, $working_dir);
+	}
+	elsif (/^-s$/) {
+		$sim = 1;
+	}
+	else {
+		&bomb;
+	}
+}
+
+&logit("flow-expire expire_count=$expire_count expire_size=$expire_size dir(s)=@dirs");
+
+&bomb if ( (! @dirs) || ( (! $expire_count) && (! $expire_size) ) );
+
+foreach my $dir (@dirs) {
+
+	my (@fNames, %fSize);
+	my $tSize = 0;
+
+	&logit("reading directory $dir");
+	open(DIR, "ls -l $dir |") || do { print "cannot read $_\n$!\n$?\n"; };
+	while ( <DIR> ) {
+		chomp;
+
+		# -rw-r--r--  1 root root 10119539 Jun 29 09:29 ft-v05.2010-06-29.092302-0500
+		# -rw-r--r--  1 root root 45700838 Dec 14  2009 ft-v05.2009-12-14.205538-0600
+
+		if (/^\S+\s+\d+\s+\S+\s+\S+\s+(\d+)\s+\w{3}\s+\d+\s.{5}\s(ft-v[\d\.\-]{25,25})$/) {
+			push(@fNames, $2);
+			$fSize{$2} = $1;
+			$tSize += $1;
+		}
+	}
+	close(DIR);
+
+	@fNames = sort @fNames;
+
+	&logit("directory=$dir, files=" . (scalar @fNames) . ", size=" . &commafy($tSize) . ", first=" . $fNames[0] . ", last=" . $fNames[$#fNames] );
+
+	while (
+			( (defined $expire_count) && ( (scalar @fNames) > $expire_count) )
+		||
+			( (defined $expire_size) && ($tSize > $expire_size) )
+	) {
+		my $deadmeat = shift @fNames;
+		if ( (! $sim) && (! unlink("$dir/$deadmeat")) ) {
+			&logit("remove $dir/$deadmeat (" . &commafy($fSize{$deadmeat}) . ") FAILED ($!)");
+			exit 0;
+		}
+		else {
+			&logit("remove $dir/$deadmeat (" . &commafy($fSize{$deadmeat}) . ") SUCCESS");
+			$tSize -= $fSize{$deadmeat}
+		}
+	}
+}
+
+sub bomb
+{
+	print "Usage: $0 [-e <expire_count[hd]>] [-E <expire_size[bKMG]>] <directory [directory ...]>\n";
+	exit 0;
+}
+
+sub logit
+{
+        open(LOG, ">>/var/log/flow-expire.log") if (! $sim);
+
+        foreach (@_) {
+                foreach (split(/\n/)) {
+			my $msg = ( scalar localtime() ) . " " . $_ . "\n";
+
+			if ($sim) {	print $msg; }
+			else {		print LOG $msg; }
+                }
+        }
+
+        close(LOG) if (! $sim);
+}
+
+sub commafy
+{
+	my $x = shift;
+	return $x if (/\D/);
+	while ( $x =~ s/(\d)(\d\d\d)\b/$1,$2/ ) { }
+        return $x;
+}
+
+# flow-expire -d 1 -e 11520 -E 70G -w /opt/netflow/capture/internet
+

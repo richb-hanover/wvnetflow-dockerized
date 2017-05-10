@@ -1,0 +1,116 @@
+diff -aur flow-tools-0.67/lib/ftchash.c flow-tools-0.67b/lib/ftchash.c
+--- flow-tools-0.67/lib/ftchash.c	2003-08-12 13:04:25.000000000 -0500
++++ flow-tools-0.67b/lib/ftchash.c	2004-08-17 18:58:29.000000000 -0500
+@@ -97,6 +97,18 @@
+ } /* ftchash_new */
+ 
+ /*
++ * function: ftchash_set_max_entries
++ *
++ *    cap the limit on the number of hash entries allowed (to control flow storms)
++ */
++void ftchash_set_max_entries(struct ftchash *ftch, u_int64 max_entries)
++{
++  if (ftch) {
++    ftch->max_entries = max_entries;
++  }
++} /* ftchash_new */
++
++/*
+  * function: ftchash_free
+  *
+  *   free storage allocated with ftchash_new
+@@ -192,6 +204,10 @@
+ 
+   }
+ 
++  if ((ftch->max_entries) && (ftch->entries >= ftch->max_entries)) {
++    return (void*)0L;
++  }
++
+   /* not found, allocate new entry */
+   if (!(rec = (struct ftchash_rec_gen*) ftchash_alloc_rec(ftch))) {
+     fterr_warnx("ftchash_alloc_rec(): failed");
+diff -aur flow-tools-0.67/lib/ftlib.h flow-tools-0.67b/lib/ftlib.h
+--- flow-tools-0.67/lib/ftlib.h	2003-11-30 21:02:28.000000000 -0600
++++ flow-tools-0.67b/lib/ftlib.h	2004-08-17 18:58:29.000000000 -0500
+@@ -210,6 +210,10 @@
+ #define FT_FILE_SKIPTMP        0x4    /* skip tmp files */
+ #define FT_FILE_CHECKNAMES     0x8    /* check filenames for sanity */
+ 
++#define FT_MAX_PEER_HASH_COUNT 10000	/* maximum number of peers to track in a hash
++					 * for source/destination-destination-count reports
++					 */
++
+ /* TLV_ - stream value
+  * DEC_ - bit in internal header to indicate successful decode
+  */
+@@ -2210,6 +2214,7 @@
+   u_int key_size;                            /* size of key */
+   int   chunk_size;                          /* chunk size (entries * d_size */
+   u_int64 entries;                           /* entries in hash table */
++  u_int64 max_entries;                       /* maximum number of entries */
+   void *traverse_rec;                        /* record when traversing */
+   struct ftchash_chunk *traverse_chunk;      /* chunk when traversing */
+   u_int64 traverse_srec;                     /* sorted rec when traversing */
+@@ -2803,6 +2808,7 @@
+ /* ftchash_ */
+ struct ftchash *ftchash_new(int h_size, int d_size, int key_size,
+   int chunk_entries);
++void ftchash_set_max_entries(struct ftchash *ftch, u_int64 max_entries);
+ void *ftchash_lookup(struct ftchash *ftch, void *key, u_int32 hash);
+ void ftchash_free(struct ftchash *ftch);
+ void *ftchash_update(struct ftchash *ftch, void *newrec, u_int32 hash);
+Only in flow-tools-0.67b/lib: ftlib.h.orig
+diff -aur flow-tools-0.67/lib/ftstat.c flow-tools-0.67b/lib/ftstat.c
+--- flow-tools-0.67/lib/ftstat.c	2003-11-30 19:27:30.000000000 -0600
++++ flow-tools-0.67b/lib/ftstat.c	2004-08-17 19:08:58.000000000 -0500
+@@ -10894,6 +10894,10 @@
+       fterr_warnx("ftchash_new(): failed");
+       return -1;
+     }
++
++#ifdef FT_MAX_PEER_HASH_COUNT
++    ftchash_set_max_entries(ftch_recprefixhp->ftch, FT_MAX_PEER_HASH_COUNT);
++#endif
+   }
+ 
+   FT_RECGET_DSTADDR(cur,rec,*fo);
+@@ -10918,6 +10922,12 @@
+ 
+   if (!(ftch_recprefixsp = ftchash_update(ftch_recprefixhp->ftch,
+     &ftch_recprefixs, hash))) {
++
++#ifdef FT_MAX_PEER_HASH_COUNT
++    if (ftch_recprefixhp->ftch->entries >= ftch_recprefixhp->ftch->max_entries)
++      return 0;
++#endif
++
+     fterr_warnx("ftch_update(): failed");
+     return -1;
+   }
+@@ -11065,6 +11075,10 @@
+       fterr_warnx("ftchash_new(): failed");
+       return -1;
+     }
++
++#ifdef FT_MAX_PEER_HASH_COUNT
++    ftchash_set_max_entries(ftch_recprefixhp->ftch, FT_MAX_PEER_HASH_COUNT);
++#endif
+   }
+ 
+   FT_RECGET_SRCADDR(cur,rec,*fo);
+@@ -11089,6 +11103,12 @@
+ 
+   if (!(ftch_recprefixsp = ftchash_update(ftch_recprefixhp->ftch,
+     &ftch_recprefixs, hash))) {
++
++#ifdef FT_MAX_PEER_HASH_COUNT
++    if (ftch_recprefixhp->ftch->entries >= ftch_recprefixhp->ftch->max_entries)
++      return 0;
++#endif
++
+     fterr_warnx("ftch_update(): failed");
+     return -1;
+   }
+Only in flow-tools-0.67b/lib: ftstat.c.orig

@@ -1,0 +1,132 @@
+1. Verify the router is capturing and exporting flows.
+
+   On the router, "show ip cache flow" should display a summary followed
+   by flow detail records (IP addresses, port numbers in hexidecimal
+   format, etc). If you don't see these records, then the router may not
+   have cef and/or "ip route-cache flow" or "ip flow ingress" configured.
+
+   On the router, "show ip flow export" displays the IP address and port
+   number that flows are being sent to, the netflow version, and the
+   number of datagrams (packets) sent. That last number should increase
+   over repeated calls. The version should be 0, 5, or 7.
+
+   Also on the router, ensure that "ip flow-cache timeout active 1"
+   is configured.
+
+2. Verify that flow-capture is capturing and recording data.
+
+      ls -l /var/log/webview/flows/capture | tail
+
+   If no "ft-" files exist then flow-capture is not running. Check that
+   you've followed the install doc.
+
+   If "ft-" files exist but are all the exact same small size (e.g.,
+   140 bytes), then the flow export is not being received from the
+   routers. Check:
+
+      (a) use a sniffer to ensure that the server is receiving the
+          netflow packets.  e.g., "tcpdump -n udp port 2055 | head -10"
+
+          If you see no packets, check firewalls/acls between the
+          router and server. The server itself may be configured with
+          a firewall (e.g., iptables) that must be configured to allow
+          export traffic.
+
+      (b) reverify the flow-capture settings and port number in use.
+          e.g., "ps -df | grep flow-capture"
+
+   If the ft- file sizes are different then you probably have good data.
+
+3. Verify that the flow-capture files contain reasonable data.
+
+   Use *both* of the following commands:
+
+     /usr/local/netflow/bin/flow-cat <ft-file> | /usr/local/netflow/bin/flow-print | head -50
+
+     flowdumper <ft-file> | head -50
+
+   The first command displays 50 flow using native flow-tools commands.
+   If it shows nothing, then go back to step 2a.
+
+   The second command is a perl script that shows every field of each
+   flow record. If this command produces no output or gives an error,
+   then the Cflow.pm module is not installed properly. Go re-read the
+   install doc and ensure you build and install that module from the
+   flow-tools-0.68/contrib directory.
+
+   If the second command looks good, try this:
+
+     flowdumper <ft-file> | grep "start time" | uniq | head -50
+
+   Make sure the timestamps are accurate and within about one minute of
+   each other (they will not necessarily be in chronological order). If
+   the times are outright wrong, then the routers probably need NTP
+   configured. If the time stamps are more than a minute apart, then you
+   either don't have much flow data (in a lab?), the routers do not have
+   consistent clocks (NTP?), or some routers don't have "ip flow-cache
+   timeout active 1" statement.
+
+4. Verify that flowage is running and seeing data.
+
+      tail -100 /var/log/webview/flows/data/flowage.log
+
+   If you don't see messages with a recent timestamp, then flowage isn't
+   running (or your server system clock is wrong).
+
+   If you see lock file messages, check "ps -df | grep flowage" to see if
+   flowage is running. If it isn't, then you can safely delete the lock
+   file (if lock file problems happen a lot, look at monFlows.pl). If
+   flowage is running, then you may have more flow data than flowage can
+   handle given your CPU and configuration (see the file OPTIMIZING).
+
+   Look for lines like:
+       reading /var/log/webview/flows/capture/ft-xxxx
+
+      - if you don't see them, then directory locations or permissions
+        may be at fault. Ensure that /var/log/webview/flows/capture
+        is readable by the process that runs flowage.pl. Ensure that
+        /var/log/webview/flows/tmp/watchdir.txt exists and contains
+        some data. Finally, check your flowage.cfg file for correct
+        directory definitions.
+
+      - if the files are spaced more than 5 minutes apart (or whatever
+        your cron interval is), then flowage may be falling behind.
+        See the file OPTIMIZING for more info.
+
+   Look for lines like:
+      processed W flows, X cacheFlows, Y localFlows, Z no-bucket flows in xxx seconds
+
+      - if W = 0 and you're sure that the flow files exist and contain
+        valid data, then Cflow.pm is probably installed incorrectly. It
+        needs to be built from the flow-tools-0.68/contrib directory. If
+        it's installed from anywhere else, it won't understand the
+        flow-tools file format.
+
+      - if Z > 0, then you have datafiles configured for buckets, but
+        flows are being dropped because they are coming from routers
+        without accurate clocks. This may be temporary (e.g., flows
+        exported after a router boots but before it's NTP is sync'd)
+        or permanent (NTP is fubar). Fix all the clocks first, then
+        delete /var/log/webview/flows/tmp/*.bin If this is chronic,
+        consider turning off buckets.
+
+   If you see RRD timestamp problems, then there could be issues with
+   the system clock of the machine running flowage or there could be
+   multiple copies of flowage running simultaneously (did someone manully
+   delete the lock file?) If this happens once in a blue moon, it can
+   be ignored. But if it happens a lot, the cause should be investigated.
+
+5. ls -lR /var/log/webview/flows/data | head -20
+
+   Make sure there are some rrd files being created.
+
+6. If graphs work but tables don't, or if you see 'J' after every item
+   in the graph legend, or if clickable graphs aren't working, then
+   verify you have rrdtool 1.0.x installed or you have installed RRDtool
+   1.2 with the proper patch (see step 1d of the README/INSTALL guide)
+
+7. If the graphs have gaps or spikes that are significantly above the
+   available bandwidth, then ensure that the exporters are all configured
+   with NTP and are expiring active flows after 1 minute (on Cisco IOS,
+   "ip flow-cache timeout active 1").
+

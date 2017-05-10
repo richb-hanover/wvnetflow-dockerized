@@ -1,0 +1,20 @@
+CREATE TABLE netusage (
+  core enum('Unknown','N/A') NOT NULL default 'Unknown',
+  transport enum('Unknown','Private','Tunnel') NOT NULL default 'Unknown',
+  file enum('Unknown','Aggregate','Detail') NOT NULL default 'Unknown',
+  site varchar(32) NOT NULL default '',
+  bw int(11) default NULL,
+  time datetime NOT NULL default '0000-00-00 00:00:00',
+  category varchar(32) NOT NULL default '',
+  avg_in double unsigned default NULL,
+  avg_out double unsigned default NULL,
+  max_in double unsigned default NULL,
+  max_out double unsigned default NULL,
+  PRIMARY KEY  (core,transport,file,site,time,category),
+  KEY core (core),
+  KEY transport (transport),
+  KEY site (site),
+  KEY time (time),
+  KEY category (category)
+) TYPE=MyISAM;
+

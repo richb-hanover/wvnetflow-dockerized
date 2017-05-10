@@ -1,0 +1,102 @@
+#!/usr/bin/perl
+
+# script called from flow-capture
+
+use strict;
+
+# If nesting is needed, do not use flow-capture's -N option. Instead, set the $nesting variable below.
+# The default is 0. -3 YYYY/YYYY-MM/YYYY-MM-DD/flow-file -2 YYYY-MM/YYYY-MM-DD/flow-file -1 YYYY-MM-DD/flow-file 0 flow-file 1 YYYY/flow-file 2 YYYY/YYYY-MM/flow-file 3 YYYY/YYYY-MM/YYYY-MM-DD/flow-file
+my $nesting = 0;
+
+
+my $debug = 0;
+my $ftDir;
+my $ftCat = 'flow-cat';		# or flow-merge
+my $selfDir = ($0 =~ /^(.*)\/[^\/]+$/) ? $1 : '.';
+my $subdir = ($0 =~ /-(\d+)$/) ? "/$1" : "";
+my $logfile = '/var/log/flow-shuffle.log';
+my $logsize = 1_000_000;
+
+my $file = shift @ARGV;				# file to copy
+my $tDir = "/var/log/webview/flows/capture$subdir";	# target directory
+
+if ( $file =~ /\.(\d{4})-(\d\d)-(\d\d)\./ ) {
+	if ($nesting == -3)	{ $tDir .= "/$1/$1-$2/$1-$2-$3"; }	# -3 YYYY/YYYY-MM/YYYY-MM-DD/flow-file
+	elsif ($nesting == -2)	{ $tDir .= "/$1-$2/$1-$2-$3"; }		# -2 YYYY-MM/YYYY-MM-DD/flow-file
+	elsif ($nesting == -1)	{ $tDir .= "/$1-$2-$3"; }		# -1 YYYY-MM-DD/flow-file
+	elsif ($nesting == 1)	{ $tDir .= "/$1"; }			#  1 YYYY/flow-file
+	elsif ($nesting == 2)	{ $tDir .= "/$1/$1-$2"; }		#  2 YYYY/YYYY-MM/flow-file
+	elsif ($nesting == 3)	{ $tDir .= "/$1/$1-$2/$1-$2-$3"; }	#  3 YYYY/YYYY-MM/YYYY-MM-DD/flow-file
+}
+
+
+if (! -d $tDir) {
+	&logit("Creating $tDir");
+	`mkdir -p $tDir`;
+}
+
+# where to search for flow-tools files...
+my @ftDirs = (
+	undef,
+	$selfDir . '/',
+	"/usr/bin/",
+	"/usr/local/netflow/bin/",
+);
+
+foreach (@ftDirs) {
+	if (-x "$_$ftCat") {
+		$ftDir = $_;
+		&logit("Located flow-tools in " . ($ftDir || "[search path]")) if ($debug);
+		last;
+	}
+}
+
+if (! -x "$ftDir$ftCat") {
+	&logit("Could not locate $ftCat");
+	exit 1;
+}
+
+my $tFile = "tmp-" . $file;
+
+if (-s $file < 100) {
+	&logit("Skipping empty file: $file (" . (-s $file) . " bytes)");
+}
+else {
+	&logit("Source: $file (" . (-s $file) . " bytes)");
+
+	my $cmd = "$ftDir$ftCat -z 9 $file -o $tDir/$tFile 2>&1";
+	my $results = `$cmd`;
+
+	if ($?) {		# error
+		&logit($cmd);
+		&logit("result=$?");
+		&logit($results);
+	}
+	elsif (! rename("$tDir/$tFile", "$tDir/$file")) {
+		&logit("Could not rename '$tDir/$tFile', '$tDir/$file': $!");
+	}
+	else {
+		&logit("Destination: $tDir/$file (" . (-s "$tDir/$file") . " bytes)");
+	}
+}
+
+if (! unlink($file) ) {
+	&logit("Could not unlink original $file: $!");
+}
+exit 0;
+
+sub logit
+{
+	unlink($logfile) if ( (-f $logfile) && (-s $logfile > $logsize) );
+
+	open(LOG, ">>$logfile");
+
+	foreach (@_) {
+		foreach (split(/\n/)) {
+			print LOG (scalar localtime()), " ", $_, "\n";
+		}
+	}
+
+	close(LOG);
+}
+

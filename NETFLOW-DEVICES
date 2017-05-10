@@ -1,0 +1,163 @@
+Device Netflow Info
+
+
+*** Flexible Netflow ***
+
+ This applies to newer routers and switches (after 2008).
+
+    flow exporter EXPORTER
+     destination <IP of collector>
+     source Loopback0
+     transport udp 2055
+
+    flow monitor MONITOR
+     record netflow-original
+     exporter EXPORTER
+     cache timeout active 60
+
+    interface Serial0/0
+     ip flow monitor MONITOR input
+     ip flow monitor MONITOR output
+
+*** Cisco Router ***
+
+  On a Cisco router, an standard netflow config looks like this:
+
+    ip cef
+    snmp-server ifindex persist
+
+    ip flow-cache timeout active 1         ! minutes
+    ip flow-export version 5
+    ip flow-export destination <SERVER IP> 2055
+    ip flow-export source Loopback0
+
+    interface Serial0/0
+     description Rockford, IL WAN circuit
+     ip flow ingress
+     ip flow egress
+
+  The example above shows ingress/egress netflow on a *single* WAN interface. Do not use this method on more than one interface of the same router, or you will get duplicate export packets!
+
+  If a router has multiple WAN interfaces (i.e., it is potentially a transit router), then you should instead add ingress netflow to every router interface to get a complete traffic picture. E.g.,
+
+    interface Serial0/0
+     description Rockford, IL WAN circuit
+     ip flow ingress
+
+    interface GigabitEthernet0/0
+     description LAN Core 1
+     ip flow ingress
+
+    interface GigabitEthernet0/1
+     description LAN Core 2
+     ip flow ingress
+
+
+  Be aware that ingress/egress netflow interacts with router features. For example, ingress netflow will report IP addresses and QoS markings of packets as they are received by the router, *before* any router QoS/NAT policies are applied. Egress netflow reports on what the packet looks like *after* QoS/NAT is applied. This is a subtle difference, but it can lead to QoS confusion if you're not careful!
+
+*** Cisco Catalyst switches ***
+
+  There's lots of legacy baggage below; use flexible netflow if your platform supports it!
+
+  On Catalyst 5000/6000 switches running CatOS, there will be one Netflow
+  version 5 export from the MSFC configured just like the router above,
+  and a second Netflow version 5 or 7 export from the PFC configured
+  in CatOS:
+
+    set mls flow full
+    set mls agingtime ip 1                 ! minutes
+    set mls agingtime long-duration 64     ! seconds
+    set mls nde version 7                  ! or 5 if allowed
+    set mls nde <IP of collector> 5555
+    set mls nde enable
+
+  On Catalyst 6000 switches running Native IOS, the MSFC export is the
+  same and the PFC export is a bit simpler:
+
+    mls netflow
+    mls flow ip interface-full
+    mls aging normal 32                    ! seconds
+    mls aging long 64                      ! seconds
+    mls nde sender version 7               ! or 5 if allowed
+
+  Note that Catalyst 6000 Netflow behavior has changed over the
+  years. Notably:
+     1. Early CatOS Netflow exported physical ifIndexes, while native
+        IOS exports the logical.
+     2. interface-based 'ip flow ingress' has no effect on MLS flow
+        collection or export. This is fixed in SRB/SRC+.
+
+  On Catalyst 4000 switches, the commands are the same as for IOS except
+  that all interfaces are automatically turned on so you don't need
+  'ip route-cache flow' or 'ip flow ingress'. However, you should add
+  the following commands:
+
+    ip route-cache flow infer-fields
+    ip flow ingress infer-fields
+
+  On devices that support flexible netflow, the configuration is more,
+  well, flexible:
+
+
+  Note #1: flow-tools accepts versions 1, 5, and 7. For version 9/IPFIX
+  (which includes flexible netflow), you must use the flowd collector
+  described later on.
+
+  Note #2: if the router/switch runs BGP, netflow can include the
+  origin/peer ASN's by using the command "ip flow-export version 5
+  [origin-as|peer-as]".
+
+  Note #3: on Catalyst 6000 switches, you can also collect NetFlow statistics
+  on traffic that stays within a VLAN (i.e., non-routed), although this
+  significantly increases the amount of flow data exported since every
+  IP broadcast becomes a flow.
+
+        CatOS: set mls bridged-flow-statistics enable <vlan list>
+   Native IOS: ip flow ingress layer2-switched vlan <vlan list>
+
+  Note #4: on Catalyst 6000 switches running CatOS, the PFC export seems
+  to use the layer-2 interfaces like "Gig 5/1" while the MSFC export
+  uses the layer-3 interface like "VLAN 100". With Native IOS, only the
+  layer-3 interfaces are used.
+
+  Note #5: On Catalyst 5000/6000, the MSFC export shows process-switched
+  traffic. With the 5000 or 6000/SUP1A, this amounted to the first packet
+  of every flow. On the 6000/SUP2 or higher, only traffic that is "punted"
+  to the CPU for logging or ICMP errors, or is being routed through by
+  the MSFC to a Tunnel or WAN intrerface is exported by the MSFC.
+
+  Note #6: Netflow traditionally works on inbound traffic only. So on
+  a given router, you'd enable it on every interface and then you'd be
+  sure of capturing all traffic. Newer IOS supports outbound netflow
+  ('ip flow egress' or 'ip flow monitor <x> output'). Although this
+  is handy if you want netflow collection on a single interface only,
+  do not use it when netflow is being collected from more than one
+  interface or there is a danger of duplicate flows.
+
+  Notes on performance for Cisco equipment with Netflow:
+
+  On Cisco routers, you can expect a 1-2% increase in average CPU, but
+  this varies with how loaded the router currently is and how fast its
+  WAN interfaces are. On routers with large ACL's, Netflow can actually
+  lower CPU utilization. It's best to monitor CPU utilization with the
+  'show proc cpu history' command.
+
+  On the Cisco Catalyst 4000, 6000/SUP2, 6000/SUP32, and 6000/SUP720,
+  Netflow is handled outside of the switching path so that it has no
+  impact on forwarding performance and only a small impact on main CPU.
+  On the Catalyst 4000, you may see %C4K-HWNETFLOWMAN-4-FLOWSLOSTERR
+  messages due to it's small Netflow cache. These messages indicate
+  that some flows are not being accounted for.  It does not affect
+  switch forwarding.
+
+  On older Catalyst 5000 and 6000/SUP1A, Netflow is part of the switching
+  path and events like flow storms and flow table memory exhaustion can
+  lead to performance problems.
+
+
+*** Softflowd standalone probe ***
+
+  On the softflowd standalone probe, be sure to use the
+  "-t maxlife=60" option to set an active flow timeout of 60 seconds
+
+

@@ -1,0 +1,343 @@
+*** Flowage Optimization
+
+The flowage.pl perl script processes netflow data one record at-a-time
+and writes results to rrd database files. The key variables that affect
+performance include:
+
+  * The number of datapoints (roughly the number of categories multiplied
+    by the number of interfaces)
+
+  * The number of exporters sending data
+
+  * The speed of the CPU and the number of cores
+
+  * Disk I/O performance and the optional use of the rrdcached daemon
+
+
+Performance health is logged for every flow file processed, and can be
+viewed in the web health check screen or from the log itself. E.g.,
+
+  tail -1000 /var/log/webview/flows/data/flowage.log | grep processed
+
+
+Two real-world examples from 2012:
+
+A bare-metal server with two Intel E5540 (4-core) CPUs and a very complex
+configuration keeps up handily with over 70,000 flows/second from over
+600 exporters.
+
+A virtualized server with four vCPU's is able to keep up with over 25,000
+flows/second and a very demanding configuration with over 200 traffic
+categories from over 500 exporters.
+
+
+Apart from normal flow export volume, networks occasionally see "flow
+storms" -- periods of unusual flow activity due to port scanning, worm
+propagations, etc. These cause the flow files to balloon to many times
+their normal size and may cause flowage to temporarily fall behind. The
+monFlows.pl script can detect and alert on such storms.
+
+However, if Flowage is falling behind your normal flow volume or if the
+system or web interface is chronically unresponsive, it's time to spend
+some time optimizing flowage.
+
+
+There are several approaches to take when flowage is not keeping up with
+incoming flows:
+
+  1. Evaluate the server hardware.
+
+       (a) Get a faster CPU. For a small number of exporters, a higher
+           clock rate does much more good than the number of cores.
+
+       (b) Enable symmetric multiprocessing (SMP), either flowage's native
+           "fork <processes>" configuration which works well when there
+           are many exporters, or with a manual SMP configuration (see
+           #5 below).
+
+       (c) Check disk I/O. If the server becomes unresponsive for many
+           seconds at a time from command-line or web GUI, then the
+           server may have disk I/O issues.
+
+           In a large environment, flowage may need to update thousands
+           or tens of thousands of RRD files each time it runs. Having
+           so many files opened, written, and closed in rapid succession
+           is a problem for many OS's and disk subsytems. The number
+           of files in a given directory can also be a problem (be sure
+           you use the "directory hierarchical" flowage.cfg command).
+
+           The best fix is to install the rrdcached daemon (see
+           http://oss.oetiker.ch/rrdtool/doc/rrdcached.en.html), which
+           may need to be installed separately from rrdtool. rrdcached
+           allows the system to buffer and batch RRD updates to smooth the
+           I/O spikes.  See it's documentation for details on its tuning
+           knobs.  To enable webview to use rrdcached, invoke flowage.pl
+           with the "--daemon" option and set the RRDCACHED_ADDRESS
+           environment variable for CGI scripts run by Apache.
+
+           A less-prefered fix is to use flowage.pl's packed-rrd datafile
+           format which reduces the number of rrd files at the expense
+           of flexibility.
+
+           Regardless of the approach, the use of 10k or 15k RPM SCSI
+           drives with RAID0, RAID6, or RAID10 can greatly improve
+           performance and responsiveness.
+
+  2. Reduce the number of flows.
+
+       (a) The vast majority of flows are small and of little value to
+           capacity planning or understanding application volumes. For
+           example each broadcast packet may be reported as a 1-packet
+           flow that flowage must process.
+
+           If you are interested only in bandwidth utilization of "real"
+           traffic, one trick that works well is to filter out the
+           small flows. This can be done in flowage.cfg :
+
+              datafile foo Interfaces Categories
+                  Quickly
+
+              ip access-list extended Quickly
+               permit ip any any packets gt 1
+
+           The downside is, of course, that filtered traffic won't be
+           reported on. It may still be seen in the ad hoc query tool.
+
+  3. Increase capture efficiency
+
+      If flows are being lost by the collector, use a ramdisk (/dev/shm)
+      as a capture directory in flow-capture, and use the flow-shuffle
+      script from the optional-accessories subdirectory to move the
+      captured files to their real location. Using multiple collectors
+      on unique port numbers can also help.
+
+  4. Optimize flowage.cfg
+
+      (a) Group ordering
+
+          The items listed in a group are processed in the order you
+          specify them, so try to place the most common categories near
+          the top. Use the ad hoc query tool to run a report sorted by
+          'flows' to figure out the most burdensome categories.
+
+      (b) ACL rewriting
+
+          Often the ACLs themselves can be reworked for efficiency. For
+          example, if a server is responsible only for mail and nothing
+          else, then this:
+
+            ip access-list extended Email
+              permit tcp any host <mail server> eq 25 reverse
+              permit tcp any host <mail server> eq 110 reverse
+              permit tcp any host <mail server> eq 143 reverse
+
+          can probably be replaced with this:
+
+            ip access-list extended Email
+              permit ip any host <mail server> reverse
+
+          Also, be sure to use host-lists when dealing with many
+          equivalent IPs. For example, this:
+
+            ip access-list extended Email
+              permit ip any host <mail server 1> reverse
+              permit ip any host <mail server 2> reverse
+              permit ip any host <mail server 3> reverse
+              permit ip any host <mail server 4> reverse
+
+          could be replaced by this:
+
+            ip access-list extended Email
+              permit ip any host @Mail_Servers reverse
+
+            ip host-list Mail_Severs
+              <mail server 1>
+              <mail server 2>
+              <mail server 3>
+              <mail server 4>
+
+      (c) Use access-list maps. If you have many categories that are
+          made of simple host-lists, these can be combined into a very
+          efficient "map" structure. For example, given this:
+
+            ip host-list Mail_Severs
+              <mail server 1>
+              <mail server 2>
+
+            ip host-list FTP_Severs
+              <ftp server 1>
+              <ftp server 2>
+
+          instead of this:
+
+            ip access-list extended Email
+              permit ip any host @Mail_Servers reverse
+
+            ip access-list extended FTP
+              permit ip any host @FTP_Servers reverse
+
+            group Categories
+               Email
+               FTP
+
+          you can do this:
+
+            ip access-list map CategoryMap
+               Email    @Mail_Servers
+               FTP      @FTP_Servers
+
+            group Categories
+               CategoryMap
+
+          Each group can combine ACL maps and traditional ACL's to
+          achieve a good balance between efficiency and preservation of
+          order. For example:
+
+            group Categories
+               CategoryMap1
+               SimpleACL1
+               CategoryMap2
+               SimpleACL2
+
+          The above group would first check the src/dst IP's against
+          CategoryMap1. If no match is found, SimpleACL1 would be checked,
+          then CategoryMap2, then SimpleACL2.
+
+      (d) Per-datafile ACLs
+
+          If you have multiple datafile definitions, and some of those
+          definitions only apply to a subset of the flow data, add a
+          master ACL to the datafile that reduces the flows they must
+          process.
+
+          For example, say you are collecting from a bunch of internal
+          WAN routers and a single internet router. You would likely want
+          Internet-appropriate categories (web surfing, web hosting, smtp,
+          etc) for just the one internet router, while the enterprise
+          categories (file_sharing, SQL, etc) would apply to the others.
+
+          Here is how that can be done efficiently:
+
+            if-matrix Interfaces auto
+
+            datafile rrd Internet
+              Interfaces                  # interface-matrix
+              Internet_Categories         # my group of internet categories
+              Internet_Router_ACL         # my ACL to restrict this datafile
+
+            datafile rrd Enterprise
+              Interfaces                  # interface-matrix
+              Enterprise_Categories       # my group of categories
+              Enterprise_Router_ACL       # my ACL to restrict this datafile
+
+            ip access-list extended Internet_Router_ACL
+             permit ip any any exporter <internet-router>
+
+            ip access-list extended Enterprise_Router_ACL
+             deny ip any any exporter <internet-router>
+             permit ip any any
+
+  5. Harness multiple CPUs by running multiple instances of flowage
+
+     flowage.pl's internal SMP capabilities work best with a large number
+     of flow sources. An alternative is to manually configure multiple
+     instances of flowage to divide the workload across multiple CPU's.
+
+      (a) You can place each datafile definition in a separate config
+          file and have concurrent instances of flowage.pl running off
+          the same capture data. Each flowage instance needs its own
+          tmp directory and log file, but they can share capture and
+          data directories.
+
+          To have these instances share the same GUI, one more config file
+          with all datafile definitions is needed so that a proper web
+          index can be created. This last config file is never invoked
+          for actual processing, but instead is run with the "-check"
+          flag which simply creates the index file and exits.
+
+          Here are four files that demonstrate the scheme applied to
+          the Internet/enterprise example from the previous section:
+
+          -- flowage.cfg --
+
+          # never invoked for processing -- only used to create the web index
+          directory temp /var/log/webview/flows/tmp
+          include flowage-1.cfg
+          include flowage-2.cfg
+
+          -- flowage-1.cfg --
+
+          # processes Internet_Categories
+          include flowage-global.cfg
+          directory temp /var/log/webview/flows/tmp-1
+          logging file flowage-1.log
+
+          datafile rrd Internet
+              Interfaces                  # interface-matrix
+              Internet_Categories         # my group of internet categories
+              Internet_Router_ACL         # my ACL to restrict this datafile
+
+          -- flowage-2.cfg --
+
+          # processes Enterprise_Categories
+          include flowage-global.cfg
+          directory temp /var/log/webview/flows/tmp-2
+          logging file flowage-2.log
+
+          datafile rrd Enterprise
+              Interfaces                  # interface-matrix
+              Enterprise_Categories       # my group of categories
+              Enterprise_Router_ACL       # my ACL to restrict this datafile
+
+          -- flowage-global.cfg --
+
+          # all global parameters (exporters, if-matrix, access-lists, groups, host-lists, etc)
+
+          Cron would be set up like this:
+
+            */5 * * * * /usr/local/webview/flowage/flowage.pl -f flowage-1.cfg
+            */5 * * * * /usr/local/webview/flowage/flowage.pl -f flowage-2.cfg
+            0 * * * * /usr/local/webview/flowage/flowage.pl -check
+
+      (b) Use multiple instances of flowd running on different
+          port numbers to save flow data into separate capture
+          directories. Then you can run multiple flowage instances.
+
+          This is common when dealing with very different exporter types
+          -- e.g., server farm switches and WAN routers.
+
+          -- Contents of /usr/local/etc/flowd-2055.conf  --
+
+          logfile "/dev/shm/2055/flowd"
+          pidfile "/var/run/flowd-2055.pid"
+          listen on 0.0.0.0:2055
+          store ALL
+
+          -- Contents of /usr/local/etc/flowd-2056.conf  --
+
+          logfile "/dev/shm/2056/flowd"
+          pidfile "/var/run/flowd-2056.pid"
+          listen on 0.0.0.0:2056
+          store ALL
+
+          -- /etc/init.d scripts --
+
+          ln -s /etc/init.d/flowd-2055 /etc/init.d/flowd
+          ln -s /etc/init.d/flowd-2056 /etc/init.d/flowd
+          update-rc.d flowd-2055 defaults
+          update-rc.d flowd-2056 defaults
+          service flowd-2055 start
+          service flowd-2056 start
+
+          -- Cron jobs --
+
+          */5 * * * * /usr/local/webview/utils/flowd2ft 2055 >> /var/log/flowd2ft-2055.log 2>&1
+          */5 * * * * /usr/local/webview/utils/flowd2ft 2056 >> /var/log/flowd2ft-2056.log 2>&1
+
+          The above causes flow files to be written into a subdirectory of the
+          capture directory based on the port number of the collector. E.g.,
+          /opt/netflow/capture/2055 and /opt/netflow/capture/2056
+
+          Then, built a separate flowage.cfg config files for each
+          capture directory, similar to what was shown in (5a) above.
+

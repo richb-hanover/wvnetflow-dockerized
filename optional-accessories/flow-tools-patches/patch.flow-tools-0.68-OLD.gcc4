@@ -1,0 +1,134 @@
+diff -u -r ./lib/ftchash.c ./lib/ftchash.c
+--- ./lib/ftchash.c     Thu May 19 10:15:21 2005
++++ ./lib/ftchash.c     Thu May 19 10:18:31 2005
+@@ -326,7 +326,7 @@
+       (char*)ftch->traverse_chunk->base+ftch->traverse_chunk->next) {
+ 
+       ret = ftch->traverse_rec;
+-      (char*)ftch->traverse_rec += ftch->d_size;
++      ftch->traverse_rec = (void*)( ((char*)ftch->traverse_rec) + ftch->d_size);
+       return ret;
+ 
+     } else {
+diff -u -r ./lib/ftio.c ./lib/ftio.c
+--- ./lib/ftio.c        Thu May 19 10:15:21 2005
++++ ./lib/ftio.c        Thu May 19 10:18:44 2005
+@@ -2267,7 +2267,7 @@
+         break;
+ 
+       nleft -= nread;
+-      (char*)ptr += nread;
++      ptr = (void*)( ((char*)ptr) + nread);
+   }
+   return (nbytes - nleft);
+ } /* readn */
+@@ -2292,7 +2292,7 @@
+       return(nwritten); /* error */
+ 
+     nleft -= nwritten;
+-    (char*)ptr += nwritten;
++    ptr = (void*)( ((char*)ptr) + nwritten);
+   }
+   return(nbytes - nleft);
+ } /* writen */
+diff -u -r ./lib/fttlv.c ./lib/fttlv.c
+--- ./lib/fttlv.c       Thu May 19 10:15:21 2005
++++ ./lib/fttlv.c       Thu May 19 10:18:55 2005
+@@ -68,10 +68,10 @@
+   }
+ 
+   bcopy(&t, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&len, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&v, buf, 4);
+ 
+@@ -107,10 +107,10 @@
+   }
+ 
+   bcopy(&t, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&len, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&v, buf, 2);
+ 
+@@ -145,10 +145,10 @@
+   }
+ 
+   bcopy(&t, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&len, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&v, buf, 1);
+ 
+@@ -183,10 +183,10 @@
+   }
+ 
+   bcopy(&t, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&len, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(v, buf, len);
+ 
+@@ -230,16 +230,16 @@
+     return -1;
+ 
+   bcopy(&t, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&len, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&ip, buf, 4);
+-  (char*)buf += 4;
++  buf = (void*)( ((char*)buf) + 4);
+ 
+   bcopy(&ifIndex, buf, 2);
+-  (char*)buf += 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(name, buf, n);
+ 
+@@ -287,19 +287,19 @@
+   }
+ 
+   bcopy(&t, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&len, buf, 2);
+-  (char*)buf+= 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(&ip, buf, 4);
+-  (char*)buf += 4;
++  buf = (void*)( ((char*)buf) + 4);
+ 
+   bcopy(&entries, buf, 2);
+-  (char*)buf += 2;
++  buf = (void*)( ((char*)buf) + 2);
+ 
+   bcopy(ifIndex_list, buf, esize);
+-  (char*)buf += esize;
++  buf = (void*)( ((char*)buf) + esize);
+ 
+   bcopy(name, buf, n);
+

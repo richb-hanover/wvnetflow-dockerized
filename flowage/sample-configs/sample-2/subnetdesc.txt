@@ -1,0 +1,248 @@
+67.9.181.0/24	WAN seattle
+67.9.164.204/30	WAN tacoma
+67.9.193.24/29	WAN seattle
+67.9.166.128/25	WAN tacoma
+67.9.130.16/30	WAN san francisco
+67.9.159.124/30	WAN tacoma
+67.9.155.0/24	WAN tacoma
+67.9.186.0/24	WAN portland
+67.9.135.240/30	WAN seattle
+67.9.192.176/28	WAN seattle
+67.9.188.128/28	WAN sacramento
+67.9.140.0/24	WAN portland
+67.9.170.36/30	WAN seattle
+67.9.175.0/24	WAN tacoma
+67.9.158.48/30	WAN seattle
+67.9.129.232/30	WAN san francisco
+67.9.160.112/29	WAN seattle
+67.9.192.192/28	WAN seattle
+67.9.170.44/30	WAN phoenix
+67.9.158.184/30	WAN san francisco
+67.9.143.168/30	WAN tacoma
+67.9.167.128/28	WAN seattle
+67.9.177.128/27	WAN denver
+67.9.160.128/25	WAN dallas
+67.9.182.0/25	WAN phoenix
+67.9.172.0/24	WAN dallas
+67.9.129.76/30	WAN los angeles
+67.9.130.124/30	WAN portland
+67.9.164.236/30	WAN seattle
+67.9.167.208/28	WAN seattle
+67.9.159.72/29	WAN dallas
+67.9.146.252/30	WAN san francisco
+67.9.158.8/29	WAN seattle
+67.9.136.0/24	WAN dallas
+67.9.135.224/28	WAN seattle
+67.9.164.200/30	WAN seattle
+67.9.129.84/30	WAN san francisco
+67.9.150.128/25	WAN austin
+67.9.164.212/30	WAN tacoma
+67.9.134.128/26	WAN tacoma
+67.9.146.240/29	WAN tacoma
+67.9.192.248/30	WAN austin
+67.9.170.96/28	WAN san francisco
+67.9.193.64/26	WAN tacoma
+67.9.156.192/27	WAN san francisco
+67.9.156.128/27	WAN tacoma
+67.9.161.48/28	WAN seattle
+67.9.158.56/29	WAN dallas
+67.9.167.144/29	WAN san francisco
+67.9.130.0/30	WAN phoenix
+67.9.165.176/28	WAN fresno
+67.9.170.40/30	WAN tacoma
+67.9.133.160/28	WAN austin
+67.9.129.20/30	WAN fresno
+67.9.148.128/26	WAN tacoma
+67.9.171.240/29	WAN tacoma
+67.9.167.156/30	WAN tacoma
+67.9.171.248/29	WAN seattle
+67.9.151.0/24	WAN san francisco
+67.9.156.248/30	WAN san francisco
+67.9.162.224/27	WAN san francisco
+67.9.161.88/29	WAN tacoma
+67.9.158.80/28	WAN san francisco
+67.9.165.192/29	WAN seattle
+67.9.193.8/29	WAN denver
+67.9.170.48/28	WAN san francisco
+67.9.130.28/30	WAN fresno
+67.9.135.128/26	WAN los angeles
+67.9.162.40/30	WAN phoenix
+67.9.182.128/25	WAN boise
+67.9.167.160/28	WAN seattle
+67.9.143.228/30	WAN san francisco
+67.9.129.156/30	WAN boise
+67.9.185.128/25	WAN san francisco
+67.9.197.128/26	WAN austin
+67.9.129.172/30	WAN denver
+67.9.154.192/26	WAN dallas
+67.9.193.16/29	WAN seattle
+67.9.165.60/30	WAN seattle
+67.9.189.0/25	WAN seattle
+67.9.129.36/30	WAN sacramento
+67.9.161.64/28	WAN san francisco
+67.9.165.64/30	WAN seattle
+67.9.150.0/25	WAN tacoma
+67.9.133.192/26	WAN dallas
+67.9.164.240/30	WAN austin
+67.9.196.0/24	WAN fresno
+67.9.143.128/27	WAN seattle
+67.9.169.0/24	WAN seattle
+67.9.162.188/30	WAN seattle
+67.9.130.20/30	WAN austin
+67.9.158.176/29	WAN san francisco
+67.9.165.32/28	WAN san francisco
+67.9.129.120/30	WAN fresno
+67.9.162.160/28	WAN san francisco
+67.9.129.28/30	WAN boise
+67.9.163.0/25	WAN boise
+67.9.156.188/30	WAN austin
+67.9.173.0/24	WAN seattle
+67.9.129.108/30	WAN san francisco
+67.9.129.208/30	WAN tacoma
+67.9.165.224/28	WAN tacoma
+67.9.164.232/30	WAN tacoma
+67.9.192.0/25	WAN seattle
+67.9.130.36/30	WAN san francisco
+67.9.164.216/29	WAN san francisco
+67.9.192.240/29	WAN phoenix
+67.9.176.0/24	WAN phoenix
+67.9.159.8/29	WAN portland
+67.9.161.112/28	WAN phoenix
+67.9.170.8/29	WAN austin
+67.9.129.160/30	WAN seattle
+67.9.129.152/30	WAN austin
+67.9.162.128/27	WAN tacoma
+67.9.156.184/30	WAN austin
+67.9.158.112/28	WAN tacoma
+67.9.130.88/30	WAN dallas
+67.9.191.32/27	WAN los angeles
+67.9.160.104/29	WAN phoenix
+67.9.129.104/30	WAN san francisco
+67.9.164.144/28	WAN san francisco
+67.9.158.128/29	WAN seattle
+67.9.156.224/28	WAN austin
+67.9.157.224/29	WAN san francisco
+67.9.164.208/30	WAN san francisco
+67.9.135.0/25	WAN dallas
+67.9.129.216/30	WAN phoenix
+67.9.152.0/24	WAN fresno
+67.9.165.72/30	WAN fresno
+67.9.178.128/25	WAN seattle
+67.9.160.88/30	WAN dallas
+67.9.143.0/25	WAN dallas
+67.9.164.140/30	WAN san francisco
+67.9.143.224/30	WAN san francisco
+67.9.165.8/29	WAN seattle
+67.9.164.16/28	WAN austin
+67.9.164.244/30	WAN tacoma
+67.9.170.80/28	WAN san francisco
+67.9.148.112/28	WAN tacoma
+67.9.154.116/30	WAN seattle
+67.9.129.8/30	WAN boise
+67.9.129.220/30	WAN tacoma
+67.9.157.128/28	WAN seattle
+67.9.129.188/30	WAN tacoma
+67.9.198.128/25	WAN phoenix
+67.9.129.148/30	WAN Midwest Telnet
+67.9.156.160/28	WAN dallas
+67.9.154.112/30	WAN phoenix
+67.9.135.244/30	WAN seattle
+67.9.164.196/30	WAN seattle
+67.9.159.120/30	WAN san francisco
+67.9.164.172/30	WAN tacoma
+67.9.157.248/30	WAN seattle
+67.9.149.0/24	WAN denver
+67.9.164.136/30	WAN seattle
+67.9.154.96/29	WAN dallas
+67.9.191.64/26	WAN dallas
+67.9.204.0/22	WAN dallas
+67.9.177.248/29	WAN los angeles
+67.9.130.92/30	WAN portland
+67.9.162.16/29	WAN seattle
+67.9.129.240/30	WAN boise
+67.9.148.64/28	WAN dallas
+67.9.130.132/30	WAN san francisco
+67.9.130.116/30	WAN denver
+67.9.190.0/25	WAN denver
+67.9.129.224/30	WAN tacoma
+67.9.165.48/30	WAN boise
+67.9.165.160/28	WAN san francisco
+67.9.143.184/30	WAN seattle
+67.9.159.116/30	WAN seattle
+67.9.158.64/28	WAN san francisco
+67.9.130.76/30	WAN portland
+67.9.129.140/30	WAN sacramento
+67.9.198.0/25	WAN los angeles
+67.9.129.248/30	WAN denver
+67.9.129.212/30	WAN austin
+67.9.170.128/25	WAN portland
+67.9.165.200/29	WAN seattle
+67.9.167.184/30	WAN seattle
+67.9.158.32/29	WAN seattle
+67.9.171.160/28	WAN boise
+67.9.162.24/29	WAN seattle
+67.9.148.96/28	WAN tacoma
+67.9.177.192/27	WAN fresno
+67.9.162.176/29	WAN san francisco
+67.9.162.32/29	WAN san francisco
+67.9.130.24/30	WAN fresno
+67.9.134.0/25	WAN boise
+67.9.130.32/30	WAN seattle
+67.9.161.96/29	WAN san francisco
+67.9.129.4/30	WAN boise
+67.9.166.0/25	WAN fresno
+67.9.146.248/30	WAN tacoma
+67.9.159.128/25	WAN dallas
+67.9.130.120/30	WAN portland
+67.9.158.168/29	WAN austin
+67.9.142.0/24	WAN dallas
+67.9.129.124/30	WAN los angeles
+67.9.129.144/30	WAN phoenix
+67.9.193.0/29	WAN san francisco
+67.9.161.80/30	WAN austin
+67.9.167.192/28	WAN seattle
+67.9.157.208/29	WAN seattle
+67.9.194.0/25	WAN san francisco
+67.9.162.64/26	WAN san francisco
+67.9.143.188/30	WAN seattle
+67.9.171.236/30	WAN seattle
+67.9.188.0/25	WAN dallas
+67.9.158.136/29	WAN denver
+67.9.171.232/30	WAN tacoma
+67.9.162.48/28	WAN san francisco
+67.9.143.252/30	WAN san francisco
+67.9.164.0/28	WAN seattle
+67.9.159.0/29	WAN phoenix
+67.9.165.0/29	WAN seattle
+67.9.147.0/24	WAN boise
+67.9.129.244/30	WAN san francisco
+67.9.174.0/25	WAN san francisco
+67.9.189.128/25	WAN boise
+67.9.197.192/26	WAN austin
+67.9.159.88/30	WAN seattle
+67.9.157.216/30	WAN seattle
+67.9.187.0/24	WAN san francisco
+67.9.156.176/29	WAN seattle
+67.9.157.160/28	WAN seattle
+67.9.158.16/29	WAN san francisco
+67.9.157.156/30	WAN tacoma
+67.9.160.80/29	WAN portland
+67.9.165.28/30	WAN dallas
+67.9.199.0/24	WAN tacoma
+67.9.177.240/29	WAN san francisco
+67.9.202.128/27	WAN boise
+67.9.157.0/25	WAN dallas
+67.9.202.192/27	WAN phoenix
+67.9.180.0/24	WAN sacramento
+67.9.197.0/25	WAN tacoma
+67.9.144.128/25	WAN tacoma
+67.9.177.160/27	WAN denver
+67.9.185.0/25	WAN sacramento
+67.9.129.204/30	WAN dallas
+67.9.156.240/29	WAN seattle
+67.9.165.16/30	WAN seattle
+67.9.156.0/25	WAN tacoma
+67.9.130.40/30	WAN phoenix
+67.9.162.192/27	WAN tacoma
+67.9.129.136/30	WAN san francisco
+

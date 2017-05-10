@@ -1,0 +1,1256 @@
+<html>
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=Generator content="Microsoft Word 11 (filtered)">
+<title>saaMon</title>
+
+<style>
+<!--
+ /* Font Definitions */
+ @font-face
+	{font-family:Wingdings;
+	panose-1:5 0 0 0 0 0 0 0 0 0;}
+ /* Style Definitions */
+ p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{margin:0in;
+	margin-bottom:.0001pt;
+	font-size:12.0pt;
+	font-family:"Times New Roman";}
+@page Section1
+	{size:8.5in 11.0in;
+	margin:1.0in .9in 1.0in 1.0in;}
+div.Section1
+	{page:Section1;}
+ /* List Definitions */
+ ol
+	{margin-bottom:0in;}
+ul
+	{margin-bottom:0in;}
+-->
+</style>
+
+</head>
+
+<body lang=EN-US>
+
+<div class=Section1>
+
+<p class=MsoNormal><b><span style='font-size:18.0pt;font-family:"Courier New"'>ipslaMon.cgi</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>Craig
+Weinhold (weinhold@berbee.com)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>Berbee
+Information Networks Corp.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>Copyright
+© 2005</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><b><span style='font-size:10.0pt;
+font-family:"Courier New"'>Usage:</span></b></p>
+
+<p class=MsoNormal style='text-indent:.5in'><span style='font-size:10.0pt;
+font-family:"Courier New"'>ipslaMon.cgi [OPTION] [COMMAND]...</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New"'>Options</span></p>
+
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:6.0pt;
+margin-left:2.0in;text-indent:-2.0in'><span style='font-size:10.0pt;font-family:
+"Courier New"'> --datadir=DIRECTORY    Absolute path of data directory (chmod
+664). Used for rrd, log, and config files.</span></p>
+
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:6.0pt;
+margin-left:2.0in;text-indent:-2.0in'><span style='font-size:10.0pt;font-family:
+"Courier New"'> --graphdir=DIRECTORY   Absolute path of graph work directory
+(chmod 666). Should be underneath web server's DocumentRoot.</span></p>
+
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:6.0pt;
+margin-left:2.0in;text-indent:-2.0in'><span style='font-size:10.0pt;font-family:
+"Courier New"'> --graphurl=RELATIVE    Relative path to graph work directory,
+for composing URIs.</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New"'>Commands</span></p>
+
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:6.0pt;
+margin-left:2.0in;text-indent:-2.0in'><span style='font-size:10.0pt;font-family:
+"Courier New"'> --poll                 Collect IP SLA data once. Use this from
+a scheduler like cron. The cron frequency should match the 'rrd period' config
+setting.</span></p>
+
+<p class=MsoNormal style='margin-left:2.0in'><span style='font-size:10.0pt;
+font-family:"Courier New"'># crontab entry for ipslaMon with 'rrd period 60'</span></p>
+
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:6.0pt;
+margin-left:2.0in'><span style='font-size:10.0pt;font-family:"Courier New"'>* *
+* * * /var/www/cgi-bin/ipslaMon.cgi --poll</span></p>
+
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:6.0pt;
+margin-left:2.0in;text-indent:-2.0in'><span style='font-size:10.0pt;font-family:
+"Courier New"'> --daemon               Collect IP SLA data continuously. The
+collection interval is determined by 'rrd period' config setting.</span></p>
+
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:6.0pt;
+margin-left:2.0in;text-indent:-2.0in'><span style='font-size:10.0pt;font-family:
+"Courier New"'> --setup                Attempt to set up ipslaMon.cgi
+directories with proper permissions and create a default config file.</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><b><span style='font-size:10.0pt;
+font-family:"Courier New"'>Description:</span></b></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New"'>ipslaMon.cgi is a script used for both backend
+collection of IP Service Level Agreement (IP SLA, formerly RTR or SAA) data
+from Cisco routers and for frontend viewing of this data from a web browser. IP
+SLA is a router technology that measures the response time of probe traffic
+across arbitrary network paths. It is good to have a basic idea of how to
+configure IP SLA probes before implementing this script. Refer to
+http://www.cisco.com/go/ipsla for more information.</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><b><span style='font-size:10.0pt;
+font-family:"Courier New"'>Basic script installation steps:</span></b></p>
+
+<p class=MsoNormal style='margin-left:30.0pt;text-indent:-.25in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>1.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:10.0pt;font-family:"Courier New"'>Begin
+with a machine with a web server and all dependencies (see below).</span></p>
+
+<p class=MsoNormal style='margin-left:30.0pt;text-indent:-.25in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>2.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:10.0pt;font-family:"Courier New"'>Copy ipslaMon.cgi
+to a cgi directory (e.g., /var/www/cgi-bin).</span></p>
+
+<p class=MsoNormal style='margin-left:30.0pt;text-indent:-.25in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>3.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:10.0pt;font-family:"Courier New"'>Choose
+or create a user to run the backend collection.</span></p>
+
+<p class=MsoNormal style='margin-left:30.0pt;text-indent:-.25in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>4.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:10.0pt;font-family:"Courier New"'>As root,
+run 'ipslaMon.cgi --user=&lt;username&gt; --setup'.</span></p>
+
+<p class=MsoNormal style='margin-left:30.0pt;text-indent:-.25in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>5.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:10.0pt;font-family:"Courier New"'>Configure
+the user with a cron job to run 'ipslaMon.cgi -poll' every minute.</span></p>
+
+<p class=MsoNormal style='margin-left:30.0pt;text-indent:-.25in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>6.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:10.0pt;font-family:"Courier New"'>Open the
+script in a browser (e.g., http://myserver/cgi-bin/ipslaMon.cgi)</span></p>
+
+<p class=MsoNormal style='margin-left:30.0pt;text-indent:-.25in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>7.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;
+</span></span><span style='font-size:10.0pt;font-family:"Courier New"'>Use the
+web interface to configure a few IP SLA source routers.</span></p>
+
+<p class=MsoNormal style='margin-top:6.0pt;margin-right:0in;margin-bottom:6.0pt;
+margin-left:0in'><span style='font-size:10.0pt;font-family:"Courier New"'>The
+web interface is populated with information learned from the IP SLA souce
+routers. Here is a sample IP SLA probe:</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>  ip
+sla 50</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>  
+type jitter dest-ipaddr 10.110.248.98 num-packets 5</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>  
+tos 0x2E</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>  
+tag 0234-Providence, RI (Frame-relay)</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>  
+frequency 300</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>  
+request-data-size 100</span></p>
+
+<p class=MsoNormal style='margin-top:6.0pt;margin-right:0in;margin-bottom:6.0pt;
+margin-left:0in'><b><span style='font-size:10.0pt;font-family:"Courier New"'>Guidelines
+for configuring IP SLA for use with ipslaMon.cgi:</span></b></p>
+
+<ul style='margin-top:0in' type=disc>
+ <li class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+     font-family:"Courier New"'>only echo and jitter probes are supported (at
+     this time). Some echo-like probes, such as http and dns requests, may
+     work.</span></li>
+ <li class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+     font-family:"Courier New"'>udp jitter probes may collect one-way times,
+     but these are only accurate if both devices involved in the probe have
+     local NTP servers (e.g., GPS clocks). If NTP is run across the WAN link
+     being probed by IP SLA, the one-way times will be blank and/or incorrect.</span></li>
+ <li class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+     font-family:"Courier New"'>ip sla 'frequency' should be &gt;= the 'rrd
+     period' of ipslaMon.cgi or else some data samples will be missed.</span></li>
+ <li class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+     font-family:"Courier New"'>the ip sla index is persistent. If an index
+     number is reused for a different target, the new tag will be used, but the
+     graph will contain old data.</span></li>
+ <li class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+     font-family:"Courier New"'>'tag' is used for labeling and grouping sites
+     within the web interface. Each tag should be made of a general target name
+     followed by specific probe attributes in parenthesis. For example,</span></li>
+</ul>
+
+<p class=MsoNormal style='margin-left:1.0in'><span style='font-size:10.0pt;
+font-family:"Courier New"'>ip sla 50</span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><span lang=IT style='font-size:
+10.0pt;font-family:"Courier New"'> tag Madison, WI (via Frame Relay)</span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><span lang=IT style='font-size:
+10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><span lang=IT style='font-size:
+10.0pt;font-family:"Courier New"'>ip sla 51</span></p>
+
+<p class=MsoNormal style='margin-left:1.0in'><span lang=IT style='font-size:
+10.0pt;font-family:"Courier New"'> tag Madison, WI (via VPN Tunnel)</span></p>
+
+<p class=MsoNormal><span lang=IT style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:6.0pt;
+margin-left:.5in'><span style='font-size:10.0pt;font-family:"Courier New"'>The
+web interface will show a menu with 'Madison, WI', from which a graph will show
+'via Frame Relay' and 'via VPN Tunnel' as two different colors.</span></p>
+
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:6.0pt;
+margin-left:.5in'><span style='font-size:10.0pt;font-family:"Courier New"'>By
+creating multiple probes with different attributes and tags, it's easy to group
+the probe results on the same graph (e.g., for different network paths, QoS
+settings, packet sizes, etc).</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><b><span style='font-size:10.0pt;
+font-family:"Courier New"'>Dependencies:</span></b></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New"'>  Perl 5.6 or higher</span></p>
+
+<p class=MsoNormal style='margin-top:0in;margin-right:0in;margin-bottom:6.0pt;
+margin-left:.5in'><span style='font-size:10.0pt;font-family:"Courier New"'>http://www.perl.org
+or http://activestate.com</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New"'>  CGI.pm</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt;text-indent:.5in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>http://stein.cshl.org/WWW/software/CGI/</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New"'>  SNMP_util</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt;text-indent:.5in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>http://www.switch.ch/misc/leinen/snmp/perl/</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt'><span style='font-size:10.0pt;
+font-family:"Courier New"'>  RRDTOOL</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt;text-indent:.5in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>http://people.ee.ethz.ch/~oetiker/webtools/rrdtool/</span></p>
+
+<p class=MsoNormal style='margin-bottom:6.0pt;text-indent:.5in'><span
+style='font-size:10.0pt;font-family:"Courier New"'>(be sure to do a 'make
+site-perl-install')</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><b><span style='font-size:10.0pt;font-family:"Courier New"'>Variable
+reference:</span></b></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>Below
+is a reference guide to all the variables configurable from the web interface's
+setup option.</span></p>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+<table class=MsoNormalTable border=1 cellspacing=0 cellpadding=0 width=669
+ style='width:502.0pt;border-collapse:collapse;border:none'>
+ <tr style='page-break-inside:avoid'>
+  <td width=167 colspan=2 valign=top style='width:124.9pt;border:solid #999999 1.0pt;
+  background:gray;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><b><span style='font-size:
+  10.0pt;font-family:"Courier New"'>router</span></b></p>
+  </td>
+  <td width=503 rowspan=2 valign=top style='width:377.1pt;border:solid #999999 1.0pt;
+  border-left:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Add each IP SLA source router to be
+  monitored. The name you provide will be displayed in the graphs and tables.</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Each router has two sub-variables:<br>
+  <br>
+  </span></p>
+  <p class=MsoNormal style='margin-left:.5in;text-indent:-.5in;page-break-after:
+  avoid'><b><span style='font-size:10.0pt;font-family:"Courier New"'>snmp</span></b><span
+  style='font-size:10.0pt;font-family:"Courier New"'>  The SNMP community string
+  to use. Leave blank to use the global.</span></p>
+  <p class=MsoNormal style='margin-left:.5in;text-indent:-.5in;page-break-after:
+  avoid'><b><span style='font-size:10.0pt;font-family:"Courier New"'>host</span></b><span
+  style='font-size:10.0pt;font-family:"Courier New"'>  The name or IP address
+  of the router. Leave blank to use the router name.</span></p>
+  </td>
+ </tr>
+ <tr style='page-break-inside:avoid'>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+ </tr>
+ <tr height=0>
+  <td width=31 style='border:none'></td>
+  <td width=135 style='border:none'></td>
+  <td width=503 style='border:none'></td>
+ </tr>
+</table>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<table class=MsoNormalTable border=1 cellspacing=0 cellpadding=0 width=669
+ style='width:502.0pt;border-collapse:collapse;border:none'>
+ <tr style='page-break-inside:avoid'>
+  <td width=167 colspan=2 valign=top style='width:124.9pt;border:solid #999999 1.0pt;
+  background:gray;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><b><span style='font-size:
+  10.0pt;font-family:"Courier New"'>directory</span></b></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border:solid #999999 1.0pt;
+  border-left:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>data</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The directory where rrd, config, cache, and
+  log files are stored. The default is /var/ipsla.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>graph_absolute</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The directory where graphs are created and
+  served up to the web user. This must be a web-accessible directory (i.e.,
+  under ‘DocumentRoot’) and be writeable by the web user (e.g., ‘nobody’ or
+  ‘apache’). The default is /var/www/html/graphs.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>graph_relative</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The relative path that refers to the
+  graph_absolute directory from the perspective of a web user. This is used to
+  compose links to images.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>warnings</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>By default, if ipslaMon.cgi thinks there is
+  a problem with graph_absolute and graph_relative, it will display an error
+  message. This may be wrong if your web server uses virtual directories or
+  other such advanced tricks. Set this to ‘off’ to suppress these errors.</span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<table class=MsoNormalTable border=1 cellspacing=0 cellpadding=0 width=669
+ style='width:502.0pt;border-collapse:collapse;border:none'>
+ <tr style='page-break-inside:avoid'>
+  <td width=167 colspan=2 valign=top style='width:124.9pt;border:solid #999999 1.0pt;
+  background:gray;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><b><span style='font-size:
+  10.0pt;font-family:"Courier New"'>snmp</span></b></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border:solid #999999 1.0pt;
+  border-left:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>community</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Global community string, which may be
+  overridden on a per-router basis.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>version</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Version to use, ‘1’ or ‘2c’. The default is
+  ‘2c’ which is far more efficient for bulk snmpwalks. Revert to version ‘1’
+  only if ‘2c’ isn’t working for you.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>timeout</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Timeout in seconds. Keep this low.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>retries</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Retry attempts.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><b><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></b></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>backoff</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Backoff time in seconds. Each successive
+  retry waits this many more seconds.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>port</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>UDP port to use.</span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<table class=MsoNormalTable border=1 cellspacing=0 cellpadding=0 width=669
+ style='width:502.0pt;border-collapse:collapse;border:none'>
+ <tr style='page-break-inside:avoid'>
+  <td width=167 colspan=2 valign=top style='width:124.9pt;border:solid #999999 1.0pt;
+  background:gray;padding:2.9pt 5.75pt 2.9pt 5.75pt'><span style='font-size:
+  12.0pt;font-family:"Times New Roman"'><br clear=all style='page-break-before:
+  always'>
+  </span>
+  <p class=MsoNormal style='page-break-after:avoid'><b><span style='font-size:
+  10.0pt;font-family:"Courier New"'>rrd</span></b></p>
+  </td>
+  <td width=503 rowspan=2 valign=top style='width:377.1pt;border:solid #999999 1.0pt;
+  border-left:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>This section defines how RRD files are
+  created. It may be useful to refer to the rrdtool documentation at
+  http://people.ee.ethz.ch/~oetiker/webtools/rrdtool/</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><b><span style='font-size:
+  10.0pt;font-family:"Courier New";color:red'>Note:</span></b><span
+  style='font-size:10.0pt;font-family:"Courier New"'> These parameters are used
+  to initialize the RRD database files. If you change one or more parameters,
+  it's important to reset all RRD files by using the <u>reset</u> link on the
+  Admin page. <i>This will delete all data history!</i></span></p>
+  </td>
+ </tr>
+ <tr style='page-break-inside:avoid'>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>period</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The RRD period indicates how frequently IP
+  SLA samples will be collected, in seconds. Common values are 60 (1 minute),
+  300 (5 minutes), and 900 (15 minutes).</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>If a scheduler is used to run ipslaMon.cgi,
+  be sure the execution frequency matches the rrd period.</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>It is okay for an IP SLA probe to have a
+  frequency higher than the RRD period. However, if an IP SLA probe has a lower
+  frequency, then samples will be lost.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>rows_period </span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>rows_hour</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>rows_day</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Determines how many samples are kept for
+  each resolution (period, hour, and day).</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>As data is collected at ‘period’
+  resolution, it is aggregated into hourly and daily values. This allows the
+  RRD file to contain a year or more of samples without consuming a huge amount
+  of disk space.</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The default is to keep 380 rows of ‘day’
+  (about a year), 720 rows of ‘hour’ (30 days), and 2016 rows of ‘period’ (7
+  days if period is 300, or 1.4 days if period is 60).</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Those familiar with RRD may notice that
+  there is no way to specify 'steps', since steps are calculated automatically
+  based on the period. </span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>fudge</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Determines the minimum number of seconds
+  that must pass between sample updates. A good value is ‘10’. Fudge must be
+  less than period.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>heartbeat</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Determines defines the maximum number of
+  seconds that may pass between samples. Typically, samples are collected like
+  clockwork every ‘rrd period’ seconds. Samples may be delayed or missing if
+  there is a large number of routers, network congestion, or down routers. To
+  see evidence of lost samples, set the heartbeat to be 20-30 seconds over the
+  ‘rrd period’. If you prefer nicer looking graphs without missing data, set
+  heartbeat to 2-3 times the value of period. The default is 930.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>xff</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>When samples are consolidated into hourly
+  and daily values, there may be some missing values (see heartbeat). The XFF
+  &quot;defines what part of a consolidation interval may be made up from
+  (missing) data while the consolidated value is still regarded as known.&quot;
+  (RRD manual)</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<table class=MsoNormalTable border=1 cellspacing=0 cellpadding=0 width=669
+ style='width:502.0pt;border-collapse:collapse;border:none'>
+ <tr style='page-break-inside:avoid'>
+  <td width=167 colspan=2 valign=top style='width:124.9pt;border:solid #999999 1.0pt;
+  background:gray;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><b><span style='font-size:
+  10.0pt;font-family:"Courier New"'>graph</span></b></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border:solid #999999 1.0pt;
+  border-left:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>default_range</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The default setting for the range
+  pull-down, measured in seconds. The default value is 32400 (9 hours).</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>format</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The file format for graph files, ‘png’ or
+  ‘gif’. The default is ‘png’.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>huge_height</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>huge_width</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>large_height</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>large_width</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>medium_height</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>medium_width</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>small_height</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>small_width</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>tiny_height</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>tiny_width</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The height and width (in pixels) of the
+  various graph sizes.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>jitter_combined</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>jitter_separate</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>There is a tremendous amount data collected
+  from IP SLA jitter probes. By default, all of it is displayed. It may be
+  useful to reduce the number of graphs by changing these settings.</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>‘jitter_combined’ determines whether or not
+  a graph will be shown of the combined positive and negative jitter
+  measurements. The default is ‘yes’.</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>‘jitter_separate’ determines whether or not
+  a graph will be shown of the individual positive and negative jitter measurements.
+  The default is ‘yes’.</span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<table class=MsoNormalTable border=1 cellspacing=0 cellpadding=0 width=669
+ style='width:502.0pt;border-collapse:collapse;border:none'>
+ <tr style='page-break-inside:avoid'>
+  <td width=167 colspan=2 valign=top style='width:124.9pt;border:solid #999999 1.0pt;
+  background:gray;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><b><span style='font-size:
+  10.0pt;font-family:"Courier New"'>misc</span></b></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border:solid #999999 1.0pt;
+  border-left:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>cachefile</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The filename for the cachefile (ipsla.cache).
+  This is stored in the data directory.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>logfile</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The filename for the log file (ipsla.log).
+  This is stored in the data directory.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>linkname</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>linkurl</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Defines a navigation link that should be
+  displayed on every web page. </span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>‘linkname’ contains visible link name. Use
+  ‘%20’ instead of space characters (e.g., ‘Our%20Home%20Page’).</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>‘linkurl’ contains the URL.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>loglevel</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Determines how much log data to display.</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>   1 only error messages</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>   2 error and informational messages</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>   3 debug messages</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>loglines</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Determines how many lines of log data
+  should be shown on the ‘IP SLA Log’ web link.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>logsize</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Determines how much log data should be
+  kept, period. When the log file reaches this size, it is moved to ipsla.log.bak.
+  Thus, the actual disk space may be twice the specified logsize.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>password</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Sets a assword that controls access to the ipslaMon.cgi
+  Setup screen.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>tagregexp</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Specifies the regular expression that will
+  split an IP SLA probe’s tag into a descriptive name and probe-specific
+  information. The name must be left in the first match argument $1.</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>The default is ^([^\()*)</span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<table class=MsoNormalTable border=1 cellspacing=0 cellpadding=0 width=669
+ style='width:502.0pt;border-collapse:collapse;border:none'>
+ <tr style='page-break-inside:avoid'>
+  <td width=167 colspan=2 valign=top style='width:124.9pt;border:solid #999999 1.0pt;
+  background:gray;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><b><span style='font-size:
+  10.0pt;font-family:"Courier New"'>timer</span></b></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border:solid #999999 1.0pt;
+  border-left:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>cache</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Controls how often the IP SLA config data
+  is reloaded from the routers, in seconds. The default is 3600 (one hour).</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>A config change to a router may have to
+  wait this much time before the IP SLA probe begins to be tracked.</span></p>
+  </td>
+ </tr>
+ <tr>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>cleanup</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Controls how frequently graph files are
+  purged. The default is 600 (20 minutes).</span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal>&nbsp;</p>
+
+<table class=MsoNormalTable border=1 cellspacing=0 cellpadding=0 width=669
+ style='width:502.0pt;border-collapse:collapse;border:none'>
+ <tr style='page-break-inside:avoid'>
+  <td width=167 colspan=2 valign=top style='width:124.9pt;border:solid #999999 1.0pt;
+  background:gray;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><b><span style='font-size:
+  10.0pt;font-family:"Courier New"'>color</span></b></p>
+  </td>
+  <td width=503 rowspan=2 valign=top style='width:377.1pt;border:solid #999999 1.0pt;
+  border-left:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Colors may be specified as ‘#RRGGBB’ or as
+  a common color name such as ‘red’, ‘green’, or ‘fuscia’.</span></p>
+  </td>
+ </tr>
+ <tr style='page-break-inside:avoid'>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+ </tr>
+ <tr style='page-break-inside:avoid'>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>background</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Specifies the background color for each
+  graph.</span></p>
+  </td>
+ </tr>
+ <tr style='page-break-inside:avoid'>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>baseline</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Specifies the color for the baseline
+  (zero).</span></p>
+  </td>
+ </tr>
+ <tr style='page-break-inside:avoid'>
+  <td width=31 valign=top style='width:23.35pt;border:solid #999999 1.0pt;
+  border-top:none;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+  </td>
+  <td width=135 valign=top style='width:101.55pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  background:#B3B3B3;padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>1</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>2</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>3</span></p>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>etc…</span></p>
+  </td>
+  <td width=503 valign=top style='width:377.1pt;border-top:none;border-left:
+  none;border-bottom:solid #999999 1.0pt;border-right:solid #999999 1.0pt;
+  padding:2.9pt 5.75pt 2.9pt 5.75pt'>
+  <p class=MsoNormal style='page-break-after:avoid'><span style='font-size:
+  10.0pt;font-family:"Courier New"'>Specifies the color for each line element.
+  Any number of lines can be defined. If a graph contains more elements than
+  defined line colors, colors are reused.</span></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal><span style='font-size:10.0pt;font-family:"Courier New"'>&nbsp;</span></p>
+
+</div>
+
+</body>
+
+</html>

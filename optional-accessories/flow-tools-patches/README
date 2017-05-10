@@ -1,0 +1,9 @@
+Webview uses the following programs from the flow-tools suite:
+
+    flow-nfilter, flow-report, flow-import, flow-export, flow-cat
+
+The flow-report program has one unbounded data structure for tabulating unique peer IP addresses. As the number of peers increases, the data structure takes exponentially longer to manipulate.
+
+If you are reporting on IP address ranges on the public Internet where DoS attacks or zombie hosts may be generating many thousands of concurrent "connections," you may want to apply the patch.flow-tools.maxhash  -- this limits those structures to 10,000 items.
+
+The other patches included here are of little use.

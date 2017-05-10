@@ -1,0 +1,29 @@
+# alias calculations for interfaces
+#
+# 'ALIAS'               'REGULAR EXPRESSION'
+# --------------------  ----------------------------------------------
+
+'LAN core'              'Core-(A|B)'
+                        'WAN-Choke-(A|B)'
+
+'Local $1'                      '^([^\#]+)#Local'
+
+'No Description'                '^$'
+
+match=any
+
+#'WAN $2, $3 ($1)'              '^(\d{3,4}[AB]?)\s*\-?\s*([a-z][^\,^\(]+),\s*([a-z]{2})'
+
+' WAN $2, $3 ($1)'              '^(\d{3,4}[AB]?)\s*\-?\s*([a-z][^\,]+),\s*([a-z]{2})'
+                                '^(DC\S\S)\s*\-?\s*([^\,^\(]+),\s*([a-z]{2})'
+                                '^([a-z0-9]{4})\s*\-\s*([a-z][^\,]+),\s*([a-z]{2})'
+
+#'Office- $1 ($2, $3)'          '^(\d{3,4}[AB]?)\s*\-?\s*([a-z][^\,]+),\s*([a-z]{2})'
+#                               '^(DC\S\S)\s*\-?\s*([^\,^\(]+),\s*([a-z]{2})'
+
+match=first
+
+' WAN Boston, MA (023)'         '^Boston'
+
+'Oddball $1'                    '(.*)'
+

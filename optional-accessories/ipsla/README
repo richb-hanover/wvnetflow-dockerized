@@ -1,0 +1,101 @@
+ipslaMon.cgi 1.28
+Berbee Information Networks Corp, http://www.berbee.com
+Q&A to Craig Weinhold, weinhold@berbee.com
+
+ipslaMon.cgi [OPTION] [COMMAND]...
+
+Options:
+
+ --datadir=DIRECTORY   Absolute path of data directory (chmod 664). Used for
+                       rrd, log, and config files.
+
+ --graphdir=DIRECTORY  Absolute path of graph work directory (chmod 666).
+                       Should be underneath web server's DocumentRoot.
+
+ --graphurl=RELATIVE   Relative path to graph work directory, for composing
+                       URIs.
+
+ --user=USER           Set file ownership to USER.
+
+Commands:
+
+ --poll                Collect IP SLA data once. Use this from a scheduler like
+                       cron. The cron frequency should match the 'rrd period'
+                       config setting.
+
+                       # crontab entry for ipslaMon with 'rrd period 300'
+                       */5 * * * * /var/www/cgi-bin/ipslaMon.cgi --poll
+
+ --daemon              Collect IP SLA data continuously. The collection interval
+                       is determined by 'rrd period' config setting.
+
+ --setup               Attempt to set up ipslaMon.cgi directories and create a
+                       default config file.
+
+ipslaMon.cgi is a script used for both backend collection of IP SLA (formerly
+SAA or RTR) data from Cisco routers and for frontend viewing of this data from
+a web browser. IP SLA is a router technology that measures the response time of
+probe traffic across arbitrary network paths. It is good to have a basic idea
+of how to configure IP SLA probes before implementing this script. Refer to
+http://www.cisco.com/go/saa for more information.
+
+Basic script installation steps:
+  1. Begin with a machine with a web server and all dependencies (see below)
+  2. Copy ipslaMon.cgi to a cgi directory (e.g., /var/www/cgi-bin).
+  3. Choose or create a user to run the backend collection.
+  4. As root, run 'ipslaMon.cgi --user=<username> --setup' to create directories.
+  5. Configure the user with a cron job to run 'ipslaMon.cgi -poll' every minute.
+  6. View the script in a browser (e.g., http://myserver/cgi-bin/ipslaMon.cgi)
+  7. Use the web interface to configure a few IP SLA source routers.
+
+The web interface is populated from the information learned from the IP SLA
+config on the routers. Here is a sample IP SLA probe:
+
+  ip sla 50
+   type jitter dest-ipaddr 10.110.248.98 num-packets 5
+   tos 0x2E
+   tag 0234-Providence, RI (Frame-relay)
+   frequency 300
+   request-data-size 100
+
+Guidelines for configuring IP SLA for use with ipslaMon.cgi:
+
+  - only echo and udp jitter probes are supported at this time.
+
+  - udp jitter probes may collect one-way times, but these are only
+    accurate if both devices involved in the probe have local NTP servers
+    (e.g., GPS clocks). If NTP is run across a WAN, the one-way times
+    will be blank and/or incorrect.
+
+  - rtr 'frequency' should be >= the 'rrd period' of ipslaMon.cgi or else some
+    data samples will be missed.
+
+  - the rtr index is persistent. If an index number is reused for a different
+    target, the new tag will be used, but the graph will contain old data.
+
+  - 'tag' is used for labeling and grouping sites within the web interface.
+    Each tag should be made of a general target name followed by specific
+    probe attributes in parenthesis. For example,
+
+      ip sla 50
+        tag Madison, WI (via Frame Relay)
+
+      ip sla 51
+        tag Madison, WI (via VPN Tunnel)
+
+    The web interface will show a menu with 'Madison, WI', from which a graph
+    will show 'via Frame Relay' and 'via VPN Tunnel' as two different colors.
+
+    By creating multiple probes with different attributes and tags, it's easy
+    to group the probe results on the same graph (e.g., for different network
+    paths, QoS settings, packet sizes, etc).
+
+Dependencies:
+  Perl 5.6+  http://www.perl.org or http://activestate.com
+  CGI.pm     http://stein.cshl.org/WWW/software/CGI/
+  SNMP_util  http://www.switch.ch/misc/leinen/snmp/perl/
+  RRDTOOL    http://people.ee.ethz.ch/~oetiker/webtools/rrdtool/
+    (be sure to do a 'make site-perl-install')
+
+  Some of these may be in ipslaMon's 'required-modules' directory.
+

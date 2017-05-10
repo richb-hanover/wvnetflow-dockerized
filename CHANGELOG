@@ -1,0 +1,112 @@
+
+v1.01    2006-02-06
+   first crude bundling with the atrocious README file
+
+v1.02    2006-03-24
+   updated README -- it's still atrocious
+
+v1.03    2007-03-06
+   added troubleshooting doc
+   note that rrd file format is incompatible with v1.02
+     see the optional-accessories/addcf.pl script if you need to upgrade
+
+v1.04    2007-04-25
+   new features: strict ACL processing, 'Other' drill-down, exporter discovery,
+     flow-lists, acl syntax cleanup, and other long-overdue improvements.
+     bonus: a default flowage.cfg that ought to work right away
+
+v1.04b   2007-05-02
+   new features: real Excel export, universal constants file (/etc/flowage.conf)
+
+v1.04c   2007-05-10
+   fixed port matches in adhoc
+
+v1.04d   2007-05-31
+   added rrdtool 1.2.x support
+   greatly improved batch rrd updates
+   multiple capture directory support
+
+v1.04e   2007-06-29
+   GUI improvements - calendar, date defaults
+
+v1.04f   2007-07-24
+   self-healing buckets
+   better snmp ifIndex collection
+ 
+v1.04g  2007-08-22
+   fixed snmp freshness bug
+
+v1.04i  2008-02-20
+   minor fixes to GUI/calendar
+
+v1.04j  2008-04-10
+   fixed lock bug and improved multi-instance coexistence
+
+v1.04k  2008-04-22
+   added flowd collector hack for netflow v9 and multicast support (see README)
+   renamed saaMon to ipslaMon
+
+v1.05  2008-06-26
+   fixed problem SNMP polling of large numbers of interfaces
+   integrated ASN reporting code
+   autoexporters now load from all tempdirs seen
+   added exact= keyword for subnet-matrices
+   fixed in/out bug with matrix-free RRD files
+   fixed minor color annoyance with multiple groups of ACLs
+   fixed (my) problem with perl5.10 hashes
+   support for packed RRDs
+   support for RRD 1.3
+   monFlows.pl no longer needs "MIME::Lite"
+   default flowage.cfg updated a bit
+   added the ability to choose/report on devices/interfaces from the ad hoc query tool
+   'Home' and 'Back' web buttons
+
+v1.05a 2008-08-13
+   minor cleanup of interfaces in adhoc tool
+   includes patched flowd-0.9.1
+   fixed flowd2ft so that it works properly
+   device/interface popup fix
+   clean interface naming fix
+   flowage fixes for rrd creation and bucket handling
+   added 'Window=' option to control range of valid timestamps
+   improved error messages of clickable graphs
+   added temp directory ownership check
+   added optional simple web gui for config/administration
+   enhanced monFlows.pl watchdog
+   enhanced flowage fatal error message logging
+
+v1.05b 2008-08-29
+   added 'kbps', 'mbps', and 'gbps' ACL options
+   added 'ecn' ACL option
+   fixed the perl5.10 hash problem (again)
+   changed default flowage.cfg to use more cisco-compatible syntax
+
+v1.05c unreleased
+   better purgeBuckets
+   snmp cache freshness bug
+   configdump.cgi fix
+   fixed order of voice apps in sample flowage.cfg
+
+v1.06 unreleased
+   rrdcached support
+   access-list maps and category display in adhoc reports - very efficient and quite useful
+   clickable graphs - click on legend category to re-graph with just that category, click on a long-timeframe graph to zoom to a short-timeframe graph
+   csv table output from web page
+   in/out ACLs supported on interface matrixes
+   exporter summary cache and better exporter report (exporter.cgi)
+   global web config file is now "/etc/webview.conf" instead of "/etc/flowage.conf"
+
+v1.07 2013-04-02
+   support for SNMPv3
+   autoclock - improved handling of inconsistent clock sources in flow data
+   native SMP - symetric multiprocessing on multi-core servers
+   variable RRD definitions based on regular expression
+   ad hoc query tool - connection reports, calendar date entry, freeform filters
+
+v1.07c 2013-08-09
+   fixed drill-down and other more cosmetic bugs in adhoc.cgi
+   added exporter delta fudge to wvFlowConn.pl
+
+v1.07d 2013-08-15
+   fixed hash conflict bug in wvFlowConn.pl
+

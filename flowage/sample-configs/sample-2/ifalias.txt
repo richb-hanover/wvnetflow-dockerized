@@ -1,0 +1,7 @@
+# Acme aliases
+
+'WAN $1'        'Acme - (.*?)\s+(T1|T3|DS|Eth|Fa|Gi|\#)'
+'WAN $1'        '\s*(.*?)\s+(T1|T3|DS|Eth|Fa|Gi|\#)'
+'WAN $1'        'Acme - (.*)'
+'All Internet'  'Ethernet'
+
