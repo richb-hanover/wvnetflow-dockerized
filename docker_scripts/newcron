@@ -23,3 +23,9 @@
 0 0 1 * * /usr/local/bin/sudo mv -f /var/log/flow-expire.log /var/log/flow-expire.old
 0 0 1 * * /usr/local/bin/sudo mv -f /var/log/flowd2ft-2055.log /var/log/flowd2ft-2055.old
 0 0 1 * * /usr/local/bin/sudo mv -f /var/log/monFlows.log /var/log/monFlows.old
+
+# Every minute, write a log entry
+*/1 * * * * echo "Cron test" >> /var/log/crontest.log 2>&1
+
+
+# LAST LINE - needs a CRLF at the end

@@ -1,0 +1,408 @@
+Webview Netflow Reporter
+Copyright (c) 1999-2013 Craig Weinhold craig.weinhold@cdw.com
+
+Home page     http://wvnetflow.sourceforge.net
+Project page  http://sourceforge.net/projects/wvnetflow/
+Mailing-list  https://lists.sourceforge.net/lists/listinfo/wvnetflow-users
+
+2013-04-18
+
+*** Overview ***
+
+Netflow records are exported from one or more routers, switches, or
+probes to a flow collector that stores them to disk. Flow collection
+can be handled by any mechanism that can write flow-tools native file
+format. It is recommended to use Damien Miller's flowd collector with
+the flowd2ft conversion script.
+
+Webview Netflow Reporter includes utilities for working with that
+flow data:
+
+ flowage/flowage.pl -- processes the flow data, identifies applications
+    or other categories, and maintains round-robin database files. This
+    program is run endlessly from cron.
+
+    In most cases, the RRD files are indexed by router/interface using
+    1-minute data resolution, but this can be easily tuned.
+
+ www/flow/render.cgi -- the web GUI for creating graphs and tables of
+    usage from the RRD files. For example, to look at usage of a certain
+    WAN link. Clicking on a portion of the graph (say a spike in
+    'Internet HTTP') will launch the adhoc reporting tool, described next.
+
+ www/flow/adhoc.cgi -- the web GUI for generating "ad hoc" reports against
+    raw flow data. Many report types are available. These provide the
+    detail behind the aggregate graphs.
+
+*** Installation Instructions
+
+If installing on Ubuntu/Debian or Centos/RedHat, see the appropriate
+INSTALL document.
+
+If installing on a different flavor of Linux (or if you want to know more
+about all the dependencies), follow th general steps below.
+
+Skills test:
+  perl, cpan, httpd.conf, cron, rc.init, rrd, cgi, gd, gcc, make,
+
+If you don't have technical familiarity with the above, then you should
+find someone who can lend a technical hand.
+
+
+(1) install dependent software.
+
+  (1a) apache and perl 5.6 or later
+
+  (1b) install flow-tools 0.68 or later
+
+         https://flow-tools.googlecode.com          (the active fork as of 2013)
+         http://www.splintered.net/sw/flow-tools/   (the original home, but inactive since 2005)
+
+       apply patches from optional-accessories/flow-tools-patches/ before building:
+
+  patch.flow-tools.scan-and-hash -- a single patch for the googlecode fork
+  patch.flow-tools-0.68-OLD.* -- patches for the original code
+
+          cd flow-tools-0.68
+          patch -p1 < ../patch.flow-tools.maxhash
+
+        - the "hash" patch sets an upper limit to how many "peers"
+          are tracked in src/dst IP reports. Without it, the limit is
+          unbounded and can lead to very sluggish reports during port
+          scans/virus outbreaks where there may be 100k+ peers. This
+          patch sets a limit of 10,000 peers and is recommended for
+          service providers.
+
+        - the "nosequenceerrs" patch eliminates flow-capture from
+          syslogging on every sequence mismatches (which can occur with
+          normal network conditions).
+
+       The googlecode fork seems to compile fine on most modern OS's. To
+       get the original flow-tools to compile, you may need to install
+       gcc3.x and/or compatibility libraries. For example, in Fedora
+       Core 6,
+
+          yum -y install compat-libstdc++-33 compat-libstdc++-296
+          yum install compat-gcc-34 compat-gcc-34-c++
+          export CC=gcc34
+
+       Then run the flow-tools install process (./configure, make, make install)
+
+  (1c) install Cflow.pm from the flow-tools' contrib directory. Be sure
+       to build and install it from the contrib directory or else it
+       won't work! This is critical!
+
+  (1d) install RRDtool, preferably from a package manager. Compiling rrdtool by hand can be very difficult!
+
+       RRDtool 1.0.x is easiest. Be sure to 'make site-perl-install'
+
+       RRDtool 1.3.x works splendidly, but has a complex build process
+       that's not for the faint-of-heart. The file README.rrdtool-1.3
+       scripts out a complete rrd 1.3 build.
+
+       RRDtool 1.2.x is included with many OS distributions, but there's
+       a cosmetic problem with its graph legend handling. If you want
+       to use rrd 1.2.x release, edit www/flow/render.cgi and set
+       "$noRRDpatch=1" to compensate.
+
+  (1e) install various Perl modules if needed. Use the following command
+       to test if a module is installed or not:
+
+            perl -e 'use <MODULE NAME>;'
+
+       If you see no response, the module exists. If you see an error
+       message, the module is needed.
+
+     a) GD and dependent libraries
+
+       Installing the following modules in the order shown is known to work:
+
+          libpng-1.2.16.tar.gz
+          gd-2.0.34.tar.gz
+          GD-2.35.tar.gz   (perl Makefile.PL -options "PNG")
+
+     b) Net::SNMP
+
+     c) Net::Patricia
+
+     d) Net::DNS and its dependent perl modules Digest::HMAC,
+        Digest::HMAC_MD5, Digest::SHA1, and Net::IP  (note: newer Perl
+        distributions come with this)
+
+     e) Spreadsheet::WriteExcel and its dependent perl module
+        Parse::RecDescent
+
+
+(2) gunzip'd and tar -xf'd the wvnetflow-X.XX.tar.gz distribution and cd into
+it (you've probably already done this)
+
+  gunzip -c wvnetflow-X.XX.tar.gz | tar -xf -
+  cd wvnetflow-X.XX
+
+
+(3) Create the webview netflow data directories, by default:
+
+  mkdir -p /opt/netflow/tmp /opt/netflow/data /opt/netflow/cache /opt/netflow/capture
+
+If you move the data elsewhere, either symlink it from the above locations, or edit the flowage.cfg and /etc/webview.conf files.
+
+
+(4) install the webview base code:
+
+  (4a) make directories and copy over the tarball files:
+
+    mkdir -p /usr/local/webview
+    cp -Rp flowage www utils /usr/local/webview
+
+  (4b) Create the graphs directory and make sure it's writeable by everyone
+       (technically, it only has to be writeable by the httpd user/group).
+
+    chmod 777 /usr/local/webview/www/flow/graphs
+
+  (4b) copy the global config variable file to /etc
+
+    cp etc/webview.conf /etc
+
+   The /etc/webview.conf file contains some global variable settings
+   used by the web interface components -- directories, file locations,
+   web rendering, etc. It must be located in the /etc directory. If
+   you've installed to non-standard directories or use a different web
+   directory structure, you will need to edit this file.
+
+
+(5) Start flow collection
+
+  (5a) copy the appropriate etc/init.d/ startup script to your system's /etc/init.d directory, and then symlink it to a port number variant.
+
+     cp etc/init.d/flowd-ubuntu /etc/init.d/flowd
+     ln -s /etc/init.d/flowd /etc/init.d/flowd-2055
+
+  (5b) ensure that the flowd or flow-capture process starts automatically by using chkconfig or update-rc.d, depending on your OS.
+
+     update-rc.d flowd-2055 defaults
+
+  (5c) consider adding other flow processing logic
+
+  The flow collection logic can chain together any of the following scripts from the utils/ directory
+
+  flowd2ft  - (flowd) convert flowd capture files to flow-tools format. This should be run from cron every 5 minutes.
+
+  flow-shuffle - (flow-capture) moves a capture file to its final location on the local system. E.g., from /dev/shm to /opt/netflow/capture. Include this as a -R option to flow-capture
+
+  flow-mover - move a capture file from a local system to a remote system. This supports batching, recovery, resumption, local caching, etc. Use it if your collector is on one server, but your datastore is somewhere else. If used, add this to flowd2ft or flow-shuffle scripts.
+
+  flow-divvy - reads a flow file and splits the flows into different flow files, usually by geography. If used, add it to the flowd2ft or flow-shuffle scripts. The flow-divvy script has more info inside.
+
+  (5d) Set up a cron job to run the flow-expire program to expire
+  old flows. E.g., this sets a limit of 10GB:
+
+    0 * * * * /usr/local/webview/utils/flow-expire-perl -E 10G -w /opt/netflow/capture/2055
+
+  Note: Flow-capture and its flow-expire utility can also do this, but there've been some weird
+  situations where it has failed. The above perl scripts seems to work better.
+
+  (5e) Start flow-capture
+
+    /etc/init.d/flowd-2055 start
+    /etc/init.d/flow-capture-2055 start
+
+
+(6) Start exporting netflow data from your devices.
+
+  (6a) Refer to your product's documentation for more info or see NETFLOW-DEVICES file.
+
+     flowd can receive Netflow versions 1, 5, 7, and 9. flow-capture can only do 1, 5, and 7.
+
+  (6b) Ensure the flows are showing up in the capture directory
+
+      ls -lR /opt/netflow/capture/
+      ls -lR /dev/shm
+
+    You should see ft- or tmp-v05.YYYY-MM-DD.HHMMSS-TZ files with non 0
+    sizes)
+
+  (6c) Use the handy command-line tool 'flowdumper' to view one of the files.
+
+
+(7) Edit /usr/local/webview/flowage/flowage.cfg and set it up as you
+like -- refer to flowage-doc.pdf for syntax details. The standard config
+should be good to go -- just add your SNMP community string.
+
+ (7a) verify your config does not have errors
+
+      /usr/local/webview/flowage/flowage.pl -check
+
+ (7b) see the flowage/sample-configs/ directory for additional sample configs.
+
+
+(8) Set up a cron entry to run flowage.pl every few minutes
+
+      crontab -e
+
+      # update Netflow database files
+      */5 * * * * perl /usr/local/webview/flowage/flowage.pl > /tmp/flowage.stdout 2> /tmp/flowage.stderr
+
+(9) Verify that flowage.log is showing activity in its log file
+
+      tail -f /opt/netflow/data/flowage.log
+
+you should see files being created and flows being processed. You may
+have to wait up to 5 minutes for processing to begin.
+
+(10) Ensure your web server can view and provide CGI access to the files
+in the /usr/local/webview/www subdirectory. There are numerous ways to
+do this. The easiest way to do this is outlined below:
+
+  a) Find your httpd.conf file (often /etc/httpd/conf/httpd.conf)
+
+  b) Edit httpd.conf and create an alias and enable CGI:
+
+   Alias /webview "/usr/local/webview/www"
+  
+   <Directory /usr/local/webview/www>
+     Options Indexes Includes FollowSymLinks ExecCGI
+     order allow,deny
+     allow from all 
+   </Directory>
+
+   AddHandler cgi-script .cgi
+
+  c) Restart the web server:
+
+   /etc/init.d/httpd restart
+
+(14) Open up a browser and point yourself at http://myserver/webview/
+and cross your fingers!
+
+
+*** Ubuntu packages (also see INSTALL.ubuntu)
+
+libnet-patricia-perl           Perl module for fast IP address lookups
+libspreadsheet-writeexcel-perl create Excel spreadsheets
+libnet-dns-perl                Perform DNS queries from a Perl script
+libgd-graph-perl               Graph Plotting Module for Perl 5
+libgd-text-perl                Text utilities for use with GD
+libgd-gd2-perl                 A module that includes graph/text
+libwww-perl                    WWW client/server library for Perl (aka LWP)
+libnet-snmp-perl               Perl support for accessing SNMP-aware device
+
+rrdtool
+librrds-perl
+
+flow-tools                     collects and processes Netflow data
+flow-tools-dev                 development files for flow-tools
+libcflow-perl                  perl module for analyzing raw IP flow files
+
+
+*** Optional watchdog monitoring
+
+There's an optional watchdog script called monFlows.pl that watches the
+health of flowage and tries to alert and/or correct on unusual situations:
+
+   flow storms -- when the count of flows shoots through the roof
+   stuck lock file -- when flowage has crashed or is rudely killed
+   timestamps -- when router timestamps are not to be believed
+   flow-capture crashed -- this can happen if disk is full
+
+If you want email notification of alerts, edit the script
+/usr/local/webview/flowage/monitor/monFlows.pl and change the line:
+
+   my $alertSmtpDestination = 'yourname@acme.com';
+
+And generate a test email:
+
+   perl /usr/local/webview/flowage/monitor/monFlows.pl --test
+
+If you don't get the test alert, then the 'mail' utility might not be
+working on your server. If you do get the email, then add a crontab entry:
+
+   # watchdog monitor
+   */15 * * * * perl /usr/local/webview/flowage/monitor/monFlows.pl > /dev/null 2>&1
+
+
+*** Optional RRD cleanup
+
+Stale RRD files can build up over time due to changing exporters,
+interfaces, and protocols. These stale entries can clutter the web
+interface. A common way to clean these out is to create two nightly
+crontab entries:
+
+# remove RRD files that have seen no activity over the past 30 days.
+0 2 * * * find /var/log/webview/flows/data/ -name '*.rrd' -mtime +30 -exec rm -f {} \;
+15 2 * * * find /var/log/webview/flows/data/ -depth -type d -empty -exec rmdir {} \;
+
+Note: you would not want to do this if you want access to historical
+data for interfaces and apps that no longer exist.
+
+
+*** Optional Netflow v9 and multicast listener support
+
+Flow-capture does not support Netflow v9 natively nor does it let you
+capture any version of Netflow using a multicast IP address. However,
+flowd 0.9.1 (http://www.mindrot.org/projects/flowd and mirrored at
+http://wvnetflow.sourceforge.net/modules) supports these features, so
+I've included the code and a script to collect flows and import them
+into flow-tools format.
+
+Note: Netflow v9's features that go beyond v5 (such as IPv6 and 32-bit
+ASNs) will not work.
+
+From the optional-accessories directory, copy flowd2ft to /usr/local/bin.
+Then untar flowd-0.9.1.tar.gz. (if you have the older version flowd-0.9
+apply the patch.flowd-0.9 to it).
+
+ gunzip -c flowd-0.9.1.tar.gz | tar -xf -
+ cd flowd-0.9.1
+ ./configure
+ make
+ make install
+ mkdir -p /usr/local/var/run
+ mkdir /var/empty
+ groupadd _flowd
+ useradd -g _flowd -c "flowd privsep" -d /var/empty _flowd
+
+Note: Older linux kernels like 2.2.16-22 do not accept underscores in
+group names. The quickest workaround is to search/replace "_flowd" ->
+"flowd" in the source code.
+
+Edit /usr/local/etc/flowd.conf. Use "man flowd.conf" for help, but at
+minimum you'll need something like this:
+
+ logfile "/var/log/flowd"
+ pidfile "/usr/local/var/run/flowd.pid"
+ listen on 0.0.0.0:2055
+ store ALL
+
+Run /usr/local/sbin/flowd -- it'll daemonize itself. It's best to
+create a /etc/init script and ensure it starts at bootup. Send it
+some flows and ensure that the file /var/log/flowd grows in size. Run
+/usr/local/bin/flowd2ft and ensure that it's able to import the data
+to ft-v05.xxxxx in the proper directory. If it seems to be working,
+create a new cron entry to import the flows every 5 minutes:
+
+ */5 * * * * /usr/local/bin/flowd2ft >/dev/null 2>&1
+
+
+*** Optional support for Autonomous System Numbers (ASNs)
+
+See asnbuild.pl and asn.cfg in the optional-accessories/ directory for
+information on how to enable Webview graphing of ASNs in a sensible
+manner.
+
+
+*** Optional web-based config/maintenance tools
+
+In the optional-accessories directory is wvnetflow-webconfig.tar.gz
+contains cgi's for a few web-based configuration and maintenance
+utilities. They are rather sparse, and very insecure. In particular,
+the webpurge.cgi script requires that this job be added to root's crontab:
+
+* * * * * sh /tmp/webpurge.sh >/dev/null 2>&1
+
+(the file webpurge.sh normally doesn't exist, but will be created by
+the webpurge.cgi script as needed)
+
+To use the scripts, extract them to /usr/local/webview/flowage -- note
+this will clobber the default flowage/flowage.cfg and www/index.html
+files.
+

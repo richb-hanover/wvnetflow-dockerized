@@ -29,6 +29,7 @@ RUN sudo apt-get update && sudo apt-get -y install \
     automake \
     build-essential \
     byacc \
+    cpanminus \
     libcflow-perl \
     libgd-gd2-perl \
     libnet-dns-perl \
@@ -39,11 +40,11 @@ RUN sudo apt-get update && sudo apt-get -y install \
     libtool \
     nano \
     rrdtool \
+    supervisor \
     tcpdump \
+    wget \
     zlib1g-dev
 
-RUN sudo apt-get -y install \
-    wget
 #
 # Retrieve, gunzip and untar the wvnetflow distribution and change into its root directory
 #
@@ -72,7 +73,7 @@ RUN cd ~/wvnetflow-1.07d \
 # Install flow-tools and Cflow.pm.
 # This requires building from the flow-tools fork at https://code.google.com/p/flow-tools/.
 # (the relative directory structure for the next few steps is very important!)
-#
+# Installed into /usr/local/flow-tools/
 RUN  cd ~/wvnetflow-1.07d \
      # file moved - no longer at: wget https://flow-tools.googlecode.com/files/flow-tools-0.68.5.1.tar.bz2
   && wget https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/flow-tools/flow-tools-0.68.5.1.tar.bz2 \
@@ -81,7 +82,7 @@ RUN  cd ~/wvnetflow-1.07d \
   && patch -p1 <../optional-accessories/flow-tools-patches/patch.flow-tools.scan-and-hash \
   && ./configure \
   && make \
-  && sudo make install
+  && sudo make install 
 
 #
 # Set up rsyslogd -- first, add socket listener for flowd chroot log file:
@@ -98,6 +99,7 @@ RUN  cd ~/wvnetflow-1.07d \
   && sudo mkdir -p /opt/netflow/data \
   && sudo mkdir -p /opt/netflow/cache \
   && sudo mkdir -p /opt/netflow/capture \
+  && sudo chown -R $USERACCT:$USERACCT /opt/netflow \
   && sudo mkdir -p /usr/local/webview \
   && sudo cp -Rp flowage www utils /usr/local/webview \
   && sudo cp etc/webview.conf /etc \
@@ -110,7 +112,8 @@ RUN  cd ~/wvnetflow-1.07d \
 RUN  cd ~/wvnetflow-1.07d \
   && sudo cp etc/flowd-2055.conf /usr/local/etc/ \
   && sudo cp etc/init.d/flowd-ubuntu /etc/init.d/flowd \
-  && sudo cp etc/init.d/flow-capture /etc/init.d/flow-capture \
+  # && sed -i.bak -e 's|/usr/local/netflow/bin/flow-capture|/usr/local/flow-tools/bin/flow-capture|' etc/init.d/flow-capture \
+  # && sudo cp etc/init.d/flow-capture /etc/init.d/flow-capture \
   && sudo chmod 755 /etc/init.d/flowd \
   && sudo ln -s /etc/init.d/flowd /etc/init.d/flowd-2055 \
   && sudo update-rc.d flowd-2055 defaults 
@@ -128,7 +131,7 @@ RUN  cd ~/wvnetflow-1.07d \
 WORKDIR $USERHOME
 COPY docker_scripts/newcron .
 RUN  crontab newcron
-
+  
 #
 # set up web server
 #
@@ -144,8 +147,7 @@ RUN sudo sed -i.bak -e'/<\/VirtualHost>/ i \
        AddHandler cgi-script .cgi \n\
   </Directory> \n\
 ' /etc/apache2/sites-available/000-default.conf \
-  && cat /etc/apache2/sites-available/000-default.conf \
-  && sudo a2enmod cgi 
+  && sudo a2enmod cgi
 
 # Manually set up the apache environment variables
 ENV APACHE_RUN_USER www-data
@@ -154,13 +156,17 @@ ENV APACHE_LOG_DIR /var/log/apache2
 ENV APACHE_LOCK_DIR /var/lock/apache2
 ENV APACHE_PID_FILE /var/run/apache2.pid
 
-# Expose apache.
+# Expose apache & netflow port
 EXPOSE 80
+EXPOSE 2055
 
 # copy in the startup script
-WORKDIR $USERHOME
-COPY docker_scripts/startup.sh . 
-RUN sudo chmod +x startup.sh 
+# WORKDIR $USERHOME
+# COPY docker_scripts/startup.sh . 
+# RUN sudo chmod +x startup.sh 
 
-# Fire off the startup.sh script when the container starts
-CMD sudo $USERHOME/startup.sh
+# Configure supervisord
+COPY docker_scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Fire off supervisor to start the fun
+CMD ["/usr/bin/supervisord"]
