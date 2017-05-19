@@ -1,0 +1,25 @@
+# every hour, keep the capture directory within bounds. This script logs to /var/log/flow-expire.log
+0 * * * * /usr/local/webview/utils/flow-expire-perl -E 1G -e 9000 -w /opt/netflow/capture/2055
+
+# every 5 minutes, run flowd2ft to convert flowd capture into flow-tools format in the capture directory
+*/5 * * * * /usr/local/webview/utils/flowd2ft 2055 >> /var/log/flowd2ft-2055.log 2>&1
+
+# run flowage.pl every five minutes
+# DISABLED RIGHT NOW; ENABLE LATER
+*/5 * * * * perl /usr/local/webview/flowage/flowage.pl > /tmp/flowage.stdout 2> /tmp/flowage.stderr
+
+# expire exporter summary files after two weeks
+0 0 * * * find /opt/netflow/capture -name 'summary-*' -mtime +14 -exec rm -f {} \;
+
+# expire unused RRD files after 30 days
+0  2 * * * find /opt/netflow/capture -name '*.rrd' -mtime +30 -exec rm -f {} \;
+15 2 * * * find /opt/netflow/capture -depth -type d -empty -exec rmdir {} \;
+
+# every 15 minutes, run monFlows.pl to check on the health of the flowage processes
+# DISABLED RIGHT NOW; ENABLE LATER
+*/15 * * * * /usr/local/webview/flowage/monitor/monFlows.pl >> /var/log/monFlows.log 2>&1
+
+# every monday, archive the various log files (you can instead use logrotate
+0 0 1 * * /usr/local/bin/sudo mv -f /var/log/flow-expire.log /var/log/flow-expire.old
+0 0 1 * * /usr/local/bin/sudo mv -f /var/log/flowd2ft-2055.log /var/log/flowd2ft-2055.old
+0 0 1 * * /usr/local/bin/sudo mv -f /var/log/monFlows.log /var/log/monFlows.old

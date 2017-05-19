@@ -13,6 +13,7 @@
 # If you haven't already, gunzip and untar the distribution and change into its root directory
 #
 cd ~
+wget https://iweb.dl.sourceforge.net/project/wvnetflow/wvnetflow/wvnetflow-1.07d.tar.gz
 gunzip -c wvnetflow-1.07.tar.gz | tar -xf -
 cd ~/wvnetflow-1.07
 
@@ -48,7 +49,8 @@ useradd -g _flowd -c "flowd privsep" -d /var/empty _flowd
 # (the relative directory structure for the next few steps is very important!)
 #
 cd ~/wvnetflow-1.07
-wget https://flow-tools.googlecode.com/files/flow-tools-0.68.5.1.tar.bz2
+# file moved - no longer at: wget https://flow-tools.googlecode.com/files/flow-tools-0.68.5.1.tar.bz2
+wget https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/flow-tools/flow-tools-0.68.5.1.tar.bz2
 bzcat flow-tools-0.68.5.1.tar.bz2 | tar -xf -
 cd flow-tools-0.68.5.1/
 patch -p1 <../optional-accessories/flow-tools-patches/patch.flow-tools.scan-and-hash
@@ -147,14 +149,15 @@ sed -i.bak -e'/<\/VirtualHost>/ i\
 	Alias /webview "/usr/local/webview/www"\
 \
 	<Directory /usr/local/webview/www>\
-	     Options Indexes Includes FollowSymLinks ExecCGI\
-	     order allow,deny\
-	     SetEnv no-gzip 1\
-	     allow from all\
+	     Options Indexes Includes FollowSymLinks ExecCGI \
+	     # order allow,deny \
+       Require all allow \
+	     SetEnv no-gzip 1 \
+	     # allow from all \
+       AddHandler cgi-script .cgi\
 	</Directory>\
 \
-	AddHandler cgi-script .cgi\
-' /etc/apache2/sites-available/default
+' /etc/apache2/sites-available/000-default.conf
 
 service apache2 restart
 
