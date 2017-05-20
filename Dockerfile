@@ -160,13 +160,14 @@ ENV APACHE_PID_FILE /var/run/apache2.pid
 EXPOSE 80
 EXPOSE 2055
 
-# copy in the startup script
-# WORKDIR $USERHOME
-# COPY docker_scripts/startup.sh . 
-# RUN sudo chmod +x startup.sh 
+# Configure Startup Process
+WORKDIR /
+COPY docker_scripts/startup.sh . 
 
 # Configure supervisord
 COPY docker_scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+RUN  sudo touch /var/log/supervisord.log \
+  && sudo chown wvnetflow:wvnetflow /var/log/supervisord.log
 
-# Fire off supervisor to start the fun
-CMD ["/usr/bin/supervisord"]
+# Fire off the startup script
+CMD ["sh", "/startup.sh"]
