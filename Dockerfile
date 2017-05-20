@@ -1,30 +1,30 @@
 # Dockerfile for Webview Netflow Reporter
 # From https://sourceforge.net/projects/wvnetflow/
 
-FROM ubuntu:trusty
+FROM phusion/baseimage:0.9.22
 MAINTAINER Rich Brown <richb.hanover@gmail.com>
 
 ENV USERACCT wvnetflow
 ENV WVNETFLOW_VERSION 1.0.7d
 ENV FLOWTOOLS_VERSION 0.68.5.1
 
+# Use baseimage-docker's init system.
+CMD ["/sbin/my_init"]
+
 # ---------------------------
 # Work as user USERACCT, not root
 
-RUN useradd -ms /bin/bash $USERACCT \
-    && echo "$USERACCT ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERACCT \
-    && chmod 0440 /etc/sudoers.d/$USERACCT \
-    && ls /etc/sudoers.d \
-    && cat /etc/sudoers.d/README
-
-USER $USERACCT
-ENV USERHOME /home/$USERACCT
-WORKDIR $USERHOME
+RUN useradd -ms /bin/bash $USERACCT 
+#     && ls -al /etc/sudoers.d \
+#     && echo "$USERACCT ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERACCT \
+#     && chmod 0440 /etc/sudoers.d/$USERACCT \
+#     && ls /etc/sudoers.d \
+#     && cat /etc/sudoers.d/README
 
 # ---------------------------
 # update and retrieve all packages necessary
 
-RUN sudo apt-get update && sudo apt-get -y install \
+RUN apt-get update && apt-get -y install \
     apache2 \
     automake \
     build-essential \
@@ -45,6 +45,13 @@ RUN sudo apt-get update && sudo apt-get -y install \
     wget \
     zlib1g-dev
 
+# 
+# Switch to $USERACCT
+#
+USER $USERACCT
+ENV USERHOME /home/$USERACCT
+WORKDIR $USERHOME
+
 #
 # Retrieve, gunzip and untar the wvnetflow distribution and change into its root directory
 #
@@ -64,10 +71,10 @@ RUN cd ~/wvnetflow-1.07d \
   && gunzip -c cweinhold-flowd-sequence.tar.gz | tar -xf - \
   && cd cweinhold-flowd-sequence \
   && ./configure \
-  && sudo make install \
-  && sudo mkdir -p /var/empty/dev \
-  && sudo groupadd _flowd \
-  && sudo useradd -g _flowd -c "flowd privsep" -d /var/empty _flowd
+  && setuser root make install \
+  && setuser root mkdir -p /var/empty/dev \
+  && setuser root groupadd _flowd \
+  && setuser root useradd -g _flowd -c "flowd privsep" -d /var/empty _flowd
 
 #
 # Install flow-tools and Cflow.pm.
@@ -169,5 +176,4 @@ COPY docker_scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 RUN  sudo touch /var/log/supervisord.log \
   && sudo chown wvnetflow:wvnetflow /var/log/supervisord.log
 
-# Fire off the startup script
-CMD ["sh", "/startup.sh"]
+
