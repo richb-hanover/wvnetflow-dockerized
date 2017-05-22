@@ -6,7 +6,7 @@ echo "======= Starting wvnetflow ========="
 echo "Running as `whoami`"
 # echo `ls -al /var/log`
 
-sudo /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+sudo /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
 
 # # start flowd
 # sudo /etc/init.d/flowd start &

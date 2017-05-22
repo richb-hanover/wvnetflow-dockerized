@@ -95,7 +95,7 @@ COPY docker_scripts/40-flowd.conf /etc/rsyslog.d/40-flowd.conf
 #
 RUN  cd ~/wvnetflow-1.07d \
   && ls -al \
-  && sudo mkdir -p /opt/netflow/tmp \
+  && mkdir -p /opt/netflow/tmp \
   && sudo mkdir -p /opt/netflow/data \
   && sudo mkdir -p /opt/netflow/cache \
   && sudo mkdir -p /opt/netflow/capture \
@@ -103,6 +103,7 @@ RUN  cd ~/wvnetflow-1.07d \
   && sudo mkdir -p /usr/local/webview \
   && sudo cp -Rp flowage www utils /usr/local/webview \
   && sudo cp etc/webview.conf /etc \
+  && sudo chown www-data:www-data /etc/webview.conf \
   && sudo chmod 777 /usr/local/webview/www/flow/graphs \
   && sudo chown -R www-data:www-data /usr/local/webview/www/flow
 
@@ -111,12 +112,14 @@ RUN  cd ~/wvnetflow-1.07d \
 #
 RUN  cd ~/wvnetflow-1.07d \
   && sudo cp etc/flowd-2055.conf /usr/local/etc/ \
+  && sudo chown $USERACCT:$USERACCT /usr/local/etc/flowd-2055.conf  \
+  && sudo chown $USERACCT:$USERACCT /usr/local/etc/flowd.conf  \
   && sudo cp etc/init.d/flowd-ubuntu /etc/init.d/flowd \
   # && sed -i.bak -e 's|/usr/local/netflow/bin/flow-capture|/usr/local/flow-tools/bin/flow-capture|' etc/init.d/flow-capture \
   # && sudo cp etc/init.d/flow-capture /etc/init.d/flow-capture \
   && sudo chmod 755 /etc/init.d/flowd \
-  && sudo ln -s /etc/init.d/flowd /etc/init.d/flowd-2055 \
-  && sudo update-rc.d flowd-2055 defaults 
+  && sudo ln -s /etc/init.d/flowd /etc/init.d/flowd-2055 
+  # && sudo update-rc.d flowd-2055 defaults 
 
   # && service flowd-2055 start
 
@@ -165,7 +168,7 @@ WORKDIR /
 COPY docker_scripts/startup.sh . 
 
 # Configure supervisord
-COPY docker_scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker_scripts/supervisord.conf /etc/supervisor/supervisord.conf
 RUN  sudo touch /var/log/supervisord.log \
   && sudo chown wvnetflow:wvnetflow /var/log/supervisord.log
 
