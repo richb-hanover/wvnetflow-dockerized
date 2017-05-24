@@ -95,7 +95,7 @@ COPY docker_scripts/40-flowd.conf /etc/rsyslog.d/40-flowd.conf
 #
 RUN  cd ~/wvnetflow-1.07d \
   && ls -al \
-  && mkdir -p /opt/netflow/tmp \
+  && sudo mkdir -p /opt/netflow/tmp \
   && sudo mkdir -p /opt/netflow/data \
   && sudo mkdir -p /opt/netflow/cache \
   && sudo mkdir -p /opt/netflow/capture \
@@ -115,6 +115,7 @@ RUN  cd ~/wvnetflow-1.07d \
   && sudo chown $USERACCT:$USERACCT /usr/local/etc/flowd-2055.conf  \
   && sudo chown $USERACCT:$USERACCT /usr/local/etc/flowd.conf  \
   && sudo cp etc/init.d/flowd-ubuntu /etc/init.d/flowd \
+  && sudo cp etc/init.d/flow-capture /etc/init.d/flow-capture \
   # && sed -i.bak -e 's|/usr/local/netflow/bin/flow-capture|/usr/local/flow-tools/bin/flow-capture|' etc/init.d/flow-capture \
   # && sudo cp etc/init.d/flow-capture /etc/init.d/flow-capture \
   && sudo chmod 755 /etc/init.d/flowd \
