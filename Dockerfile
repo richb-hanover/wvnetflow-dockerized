@@ -44,22 +44,31 @@ RUN apt-get update && apt-get -y install \
     wget \
     zlib1g-dev
 
+# add the CPAN CGI module
 RUN cpanm CGI 
 
-# 
-# Switch to $USERACCT
-#
-# USER $USERACCT
+# do everything inside wvnetflow home directory
 ENV USERHOME /home/$USERACCT
 WORKDIR $USERHOME
 
 #
-# Retrieve, gunzip and untar the wvnetflow distribution and change into its root directory
+# Retrieve, gunzip and untar the wvnetflow distribution 
+# create directories and install the wvnetflow files into /usr/local/webview directories
 #
 RUN cd ~ \
   && wget https://iweb.dl.sourceforge.net/project/wvnetflow/wvnetflow/wvnetflow-1.07d.tar.gz \
   && gunzip -c wvnetflow-1.07d.tar.gz | tar -xf - \
-  && cd ~/wvnetflow-1.07d
+  && cd ~/wvnetflow-1.07d \
+  && mkdir -p /opt/netflow/tmp \
+  && mkdir -p /opt/netflow/data \
+  && mkdir -p /opt/netflow/cache \
+  && mkdir -p /opt/netflow/capture \
+  && chown -R $USERACCT:$USERACCT /opt/netflow \
+  && mkdir -p /usr/local/webview \
+  && cp -Rp flowage www utils /usr/local/webview \
+  && cp etc/webview.conf /etc \
+  && chmod 777 /usr/local/webview/www/flow/graphs \
+  && chown -R www-data:www-data /usr/local/webview/www/flow
 
 #
 # Install the flowd collector.
@@ -67,7 +76,7 @@ RUN cd ~ \
 #   (see http://code.google.com/r/cweinhold-flowd-sequence for more information).
 #
 
-RUN cd ~/wvnetflow-1.07d \
+RUN  cd ~/wvnetflow-1.07d \
   && wget http://iweb.dl.sourceforge.net/project/wvnetflow/flowd-sequence/cweinhold-flowd-sequence.tar.gz \
   && gunzip -c cweinhold-flowd-sequence.tar.gz | tar -xf - \
   && cd cweinhold-flowd-sequence \
@@ -93,54 +102,17 @@ RUN  cd ~/wvnetflow-1.07d \
   && make install 
 
 #
-# Set up rsyslogd -- first, add socket listener for flowd chroot log file:
-#
-# RUN sed -i.bak -e '/GLOBAL DIRECTIVES/i $AddUnixListenSocket /var/empty/dev/log\n' /etc/rsyslog.conf
-# COPY docker_scripts/40-flowd.conf /etc/rsyslog.d/40-flowd.conf
-# RUN chmod +x /etc/rsyslog.d/40-flowd.conf
-
-#
-# create directories and install the wvnetflow files into /usr/local/webview directories
-#
-RUN  cd ~/wvnetflow-1.07d \
-  && mkdir -p /opt/netflow/tmp \
-  && mkdir -p /opt/netflow/data \
-  && mkdir -p /opt/netflow/cache \
-  && mkdir -p /opt/netflow/capture \
-  && chown -R $USERACCT:$USERACCT /opt/netflow \
-  && mkdir -p /usr/local/webview \
-  && cp -Rp flowage www utils /usr/local/webview \
-  && cp etc/webview.conf /etc \
-  && chmod 777 /usr/local/webview/www/flow/graphs \
-  && chown -R www-data:www-data /usr/local/webview/www/flow
-
-#
 # set up flowd init script for runit (in /etc/service/flowd/run)
 #
 RUN  cd ~/wvnetflow-1.07d \
   && cp etc/flowd-2055.conf /usr/local/etc/ \
-  && mkdir /etc/service/flowd 
-COPY docker_scripts/flowd.sh /etc/service/flowd/run 
-RUN  chmod +x /etc/service/flowd/run \
+  && mkdir /etc/service/flowd \
   && touch /var/log/flowd
-# && ln -s /etc/init.d/flowd /etc/init.d/flowd-2055 
-# && update-rc.d flowd-2055 defaults 
-# && service flowd-2055 start
-
-# (Note that multiple flowd init scripts and config files can coexist. The
-# "-number" is the port number of the listener. It's good form to use a different
-# listener port for each type of collection -- e.g., MPLS WAN routers might use
-# port 2055, while outside internet routers could use 2056 and data center
-# switches could use 2057).
+COPY docker_scripts/flowd.sh /etc/service/flowd/run 
+RUN  chmod +x /etc/service/flowd/run 
 
 #
-# create crontab from wvnetflow commands
-WORKDIR $USERHOME
-COPY docker_scripts/newcron .
-RUN  crontab newcron
-  
-#
-# set up web server
+# Set up web server
 #
 COPY docker_scripts/replacement-index.html /var/www/html/index.html
 RUN sed -i.bak -e'/<\/VirtualHost>/ i \
@@ -160,24 +132,18 @@ RUN sed -i.bak -e'/<\/VirtualHost>/ i \
 COPY docker_scripts/apache.sh /etc/service/apache2/run 
 RUN chmod +x /etc/service/apache2/run
 
-# Manually set up the apache environment variables
-# ENV APACHE_RUN_USER www-data
-# ENV APACHE_RUN_GROUP www-data
-# ENV APACHE_LOG_DIR /var/log/apache2
-# ENV APACHE_LOCK_DIR /var/lock/apache2
-# ENV APACHE_PID_FILE /var/run/apache2.pid# 
-
+#
+# create crontab from wvnetflow commands
+#
+WORKDIR $USERHOME
+COPY docker_scripts/newcron .
+RUN  crontab newcron
+  
 # Expose apache & netflow port
 EXPOSE 80
 EXPOSE 2055
 
-# Configure Startup Process
-# WORKDIR /
-# COPY docker_scripts/startup.sh . # 
-
-# # Configure supervisord
-# COPY docker_scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-# RUN  touch /var/log/supervisord.log \
-#   && chown wvnetflow:wvnetflow /var/log/supervisord.log
-
+# Clean up APT when done.
+RUN  apt-get clean \
+  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
 

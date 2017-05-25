@@ -28,4 +28,4 @@
 */1 * * * * echo "Cron test" >> /var/log/crontest.log 2>&1
 
 
-# LAST LINE - needs a CRLF at the end
+# LAST LINE - crontab files need a CRLF at the end
