@@ -40,15 +40,16 @@ RUN apt-get update && apt-get -y install \
     libtool \
     nano \
     rrdtool \
-    supervisor \
     tcpdump \
     wget \
     zlib1g-dev
 
+RUN cpanm CGI 
+
 # 
 # Switch to $USERACCT
 #
-USER $USERACCT
+# USER $USERACCT
 ENV USERHOME /home/$USERACCT
 WORKDIR $USERHOME
 
@@ -71,10 +72,10 @@ RUN cd ~/wvnetflow-1.07d \
   && gunzip -c cweinhold-flowd-sequence.tar.gz | tar -xf - \
   && cd cweinhold-flowd-sequence \
   && ./configure \
-  && setuser root make install \
-  && setuser root mkdir -p /var/empty/dev \
-  && setuser root groupadd _flowd \
-  && setuser root useradd -g _flowd -c "flowd privsep" -d /var/empty _flowd
+  && make install \
+  && mkdir -p /var/empty/dev \
+  && groupadd _flowd \
+  && useradd -g _flowd -c "flowd privsep" -d /var/empty _flowd
 
 #
 # Install flow-tools and Cflow.pm.
@@ -89,43 +90,42 @@ RUN  cd ~/wvnetflow-1.07d \
   && patch -p1 <../optional-accessories/flow-tools-patches/patch.flow-tools.scan-and-hash \
   && ./configure \
   && make \
-  && sudo make install 
+  && make install 
 
 #
 # Set up rsyslogd -- first, add socket listener for flowd chroot log file:
 #
-RUN sudo sed -i.bak -e '/GLOBAL DIRECTIVES/i $AddUnixListenSocket /var/empty/dev/log\n' /etc/rsyslog.conf
-COPY docker_scripts/40-flowd.conf /etc/rsyslog.d/40-flowd.conf
+# RUN sed -i.bak -e '/GLOBAL DIRECTIVES/i $AddUnixListenSocket /var/empty/dev/log\n' /etc/rsyslog.conf
+# COPY docker_scripts/40-flowd.conf /etc/rsyslog.d/40-flowd.conf
+# RUN chmod +x /etc/rsyslog.d/40-flowd.conf
 
 #
 # create directories and install the wvnetflow files into /usr/local/webview directories
 #
 RUN  cd ~/wvnetflow-1.07d \
-  && ls -al \
-  && sudo mkdir -p /opt/netflow/tmp \
-  && sudo mkdir -p /opt/netflow/data \
-  && sudo mkdir -p /opt/netflow/cache \
-  && sudo mkdir -p /opt/netflow/capture \
-  && sudo chown -R $USERACCT:$USERACCT /opt/netflow \
-  && sudo mkdir -p /usr/local/webview \
-  && sudo cp -Rp flowage www utils /usr/local/webview \
-  && sudo cp etc/webview.conf /etc \
-  && sudo chmod 777 /usr/local/webview/www/flow/graphs \
-  && sudo chown -R www-data:www-data /usr/local/webview/www/flow
+  && mkdir -p /opt/netflow/tmp \
+  && mkdir -p /opt/netflow/data \
+  && mkdir -p /opt/netflow/cache \
+  && mkdir -p /opt/netflow/capture \
+  && chown -R $USERACCT:$USERACCT /opt/netflow \
+  && mkdir -p /usr/local/webview \
+  && cp -Rp flowage www utils /usr/local/webview \
+  && cp etc/webview.conf /etc \
+  && chmod 777 /usr/local/webview/www/flow/graphs \
+  && chown -R www-data:www-data /usr/local/webview/www/flow
 
 #
-# set up flowd init script
+# set up flowd init script for runit (in /etc/service/flowd/run)
 #
 RUN  cd ~/wvnetflow-1.07d \
-  && sudo cp etc/flowd-2055.conf /usr/local/etc/ \
-  && sudo cp etc/init.d/flowd-ubuntu /etc/init.d/flowd \
-  # && sed -i.bak -e 's|/usr/local/netflow/bin/flow-capture|/usr/local/flow-tools/bin/flow-capture|' etc/init.d/flow-capture \
-  # && sudo cp etc/init.d/flow-capture /etc/init.d/flow-capture \
-  && sudo chmod 755 /etc/init.d/flowd \
-  && sudo ln -s /etc/init.d/flowd /etc/init.d/flowd-2055 \
-  && sudo update-rc.d flowd-2055 defaults 
-
-  # && service flowd-2055 start
+  && cp etc/flowd-2055.conf /usr/local/etc/ \
+  && mkdir /etc/service/flowd 
+COPY docker_scripts/flowd.sh /etc/service/flowd/run 
+RUN  chmod +x /etc/service/flowd/run \
+  && touch /var/log/flowd
+# && ln -s /etc/init.d/flowd /etc/init.d/flowd-2055 
+# && update-rc.d flowd-2055 defaults 
+# && service flowd-2055 start
 
 # (Note that multiple flowd init scripts and config files can coexist. The
 # "-number" is the port number of the listener. It's good form to use a different
@@ -142,7 +142,8 @@ RUN  crontab newcron
 #
 # set up web server
 #
-RUN sudo sed -i.bak -e'/<\/VirtualHost>/ i \
+COPY docker_scripts/replacement-index.html /var/www/html/index.html
+RUN sed -i.bak -e'/<\/VirtualHost>/ i \
   Alias "/webview" "/usr/local/webview/www" \n\
   \n\
   <Directory /usr/local/webview/www> \n\
@@ -154,26 +155,29 @@ RUN sudo sed -i.bak -e'/<\/VirtualHost>/ i \
        AddHandler cgi-script .cgi \n\
   </Directory> \n\
 ' /etc/apache2/sites-available/000-default.conf \
-  && sudo a2enmod cgi
+  && a2enmod cgi \
+  && mkdir /etc/service/apache2
+COPY docker_scripts/apache.sh /etc/service/apache2/run 
+RUN chmod +x /etc/service/apache2/run
 
 # Manually set up the apache environment variables
-ENV APACHE_RUN_USER www-data
-ENV APACHE_RUN_GROUP www-data
-ENV APACHE_LOG_DIR /var/log/apache2
-ENV APACHE_LOCK_DIR /var/lock/apache2
-ENV APACHE_PID_FILE /var/run/apache2.pid
+# ENV APACHE_RUN_USER www-data
+# ENV APACHE_RUN_GROUP www-data
+# ENV APACHE_LOG_DIR /var/log/apache2
+# ENV APACHE_LOCK_DIR /var/lock/apache2
+# ENV APACHE_PID_FILE /var/run/apache2.pid# 
 
 # Expose apache & netflow port
 EXPOSE 80
 EXPOSE 2055
 
 # Configure Startup Process
-WORKDIR /
-COPY docker_scripts/startup.sh . 
+# WORKDIR /
+# COPY docker_scripts/startup.sh . # 
 
-# Configure supervisord
-COPY docker_scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-RUN  sudo touch /var/log/supervisord.log \
-  && sudo chown wvnetflow:wvnetflow /var/log/supervisord.log
+# # Configure supervisord
+# COPY docker_scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+# RUN  touch /var/log/supervisord.log \
+#   && chown wvnetflow:wvnetflow /var/log/supervisord.log
 
 
