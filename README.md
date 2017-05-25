@@ -39,11 +39,12 @@ If you try it out, please file an issue and let me know how it worked for you.*
     ```
 
 5. Point your web browser to [http://localhost:83](http://localhost:83/) You will see the Webview Netflow Reporter home page. (**Note:** The `docker run...` command above maps external port 83 to the docker container's web port 80.)
-   ![wvnetflow home page](https://github.com/richb-hanover/wvnetflow-dockerized/raw/master/images/wvnetflow-home.png)
+
+   <img src="https://github.com/richb-hanover/wvnetflow-dockerized/raw/master/images/wvnetflow-home.png" width="500" />
 
 7. Configure your router(s) to export Netflow version 5 flows to port 2055 on this collector, or generate mock flow data (see below). 
 
-8. **Wait...** It can take up to five minutes before the flow data has been collected and displayed. After that, refreshing the browser shows the data collected at the right edge of any of the plots.
+8. **Wait...** It can take many minutes before the flow data has been collected and displayed. Read the Troubleshootings steps (below) to see if the machinery is working...
 
 ### QuickStart - Other setup information and tests
 
@@ -79,6 +80,8 @@ In the list should be the Apache port if no other process was already bound to t
     http://localhost:83/  # or use your computer's IP address
 
 ### Troubleshooting
+
+This information is a brief, but not complete, description of the facilities. 
 
 1. The [webview status](http://localhost:83/webview/flow/weblog.cgi) link on the home page displays a number of stats about the wvnetflow server's operation.
 
