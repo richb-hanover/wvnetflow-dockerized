@@ -28,4 +28,4 @@
 * * * * * echo "Cron test"  2>&1
 
 
-# LAST LINE - needs a CRLF at the end
+# LAST LINE - crontab files need a CRLF at the end

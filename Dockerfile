@@ -1,30 +1,30 @@
 # Dockerfile for Webview Netflow Reporter
 # From https://sourceforge.net/projects/wvnetflow/
 
-FROM ubuntu:trusty
+FROM phusion/baseimage:0.9.22
 MAINTAINER Rich Brown <richb.hanover@gmail.com>
 
 ENV USERACCT wvnetflow
 ENV WVNETFLOW_VERSION 1.0.7d
 ENV FLOWTOOLS_VERSION 0.68.5.1
 
+# Use baseimage-docker's init system.
+CMD ["/sbin/my_init"]
+
 # ---------------------------
 # Work as user USERACCT, not root
 
-RUN useradd -ms /bin/bash $USERACCT \
-    && echo "$USERACCT ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERACCT \
-    && chmod 0440 /etc/sudoers.d/$USERACCT \
-    && ls /etc/sudoers.d \
-    && cat /etc/sudoers.d/README
-
-USER $USERACCT
-ENV USERHOME /home/$USERACCT
-WORKDIR $USERHOME
+RUN useradd -ms /bin/bash $USERACCT 
+#     && ls -al /etc/sudoers.d \
+#     && echo "$USERACCT ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERACCT \
+#     && chmod 0440 /etc/sudoers.d/$USERACCT \
+#     && ls /etc/sudoers.d \
+#     && cat /etc/sudoers.d/README
 
 # ---------------------------
 # update and retrieve all packages necessary
 
-RUN sudo apt-get update && sudo apt-get -y install \
+RUN apt-get update && apt-get -y install \
     apache2 \
     automake \
     build-essential \
@@ -40,18 +40,35 @@ RUN sudo apt-get update && sudo apt-get -y install \
     libtool \
     nano \
     rrdtool \
-    supervisor \
     tcpdump \
     wget \
     zlib1g-dev
 
+# add the CPAN CGI module
+RUN cpanm CGI 
+
+# do everything inside wvnetflow home directory
+ENV USERHOME /home/$USERACCT
+WORKDIR $USERHOME
+
 #
-# Retrieve, gunzip and untar the wvnetflow distribution and change into its root directory
+# Retrieve, gunzip and untar the wvnetflow distribution 
+# create directories and install the wvnetflow files into /usr/local/webview directories
 #
 RUN cd ~ \
   && wget https://iweb.dl.sourceforge.net/project/wvnetflow/wvnetflow/wvnetflow-1.07d.tar.gz \
   && gunzip -c wvnetflow-1.07d.tar.gz | tar -xf - \
-  && cd ~/wvnetflow-1.07d
+  && cd ~/wvnetflow-1.07d \
+  && mkdir -p /opt/netflow/tmp \
+  && mkdir -p /opt/netflow/data \
+  && mkdir -p /opt/netflow/cache \
+  && mkdir -p /opt/netflow/capture \
+  && chown -R $USERACCT:$USERACCT /opt/netflow \
+  && mkdir -p /usr/local/webview \
+  && cp -Rp flowage www utils /usr/local/webview \
+  && cp etc/webview.conf /etc \
+  && chmod 777 /usr/local/webview/www/flow/graphs \
+  && chown -R www-data:www-data /usr/local/webview/www/flow
 
 #
 # Install the flowd collector.
@@ -59,15 +76,15 @@ RUN cd ~ \
 #   (see http://code.google.com/r/cweinhold-flowd-sequence for more information).
 #
 
-RUN cd ~/wvnetflow-1.07d \
+RUN  cd ~/wvnetflow-1.07d \
   && wget http://iweb.dl.sourceforge.net/project/wvnetflow/flowd-sequence/cweinhold-flowd-sequence.tar.gz \
   && gunzip -c cweinhold-flowd-sequence.tar.gz | tar -xf - \
   && cd cweinhold-flowd-sequence \
   && ./configure \
-  && sudo make install \
-  && sudo mkdir -p /var/empty/dev \
-  && sudo groupadd _flowd \
-  && sudo useradd -g _flowd -c "flowd privsep" -d /var/empty _flowd
+  && make install \
+  && mkdir -p /var/empty/dev \
+  && groupadd _flowd \
+  && useradd -g _flowd -c "flowd privsep" -d /var/empty _flowd
 
 #
 # Install flow-tools and Cflow.pm.
@@ -82,64 +99,23 @@ RUN  cd ~/wvnetflow-1.07d \
   && patch -p1 <../optional-accessories/flow-tools-patches/patch.flow-tools.scan-and-hash \
   && ./configure \
   && make \
-  && sudo make install 
+  && make install 
 
 #
-# Set up rsyslogd -- first, add socket listener for flowd chroot log file:
-#
-RUN sudo sed -i.bak -e '/GLOBAL DIRECTIVES/i $AddUnixListenSocket /var/empty/dev/log\n' /etc/rsyslog.conf
-COPY docker_scripts/40-flowd.conf /etc/rsyslog.d/40-flowd.conf
-
-#
-# create directories and install the wvnetflow files into /usr/local/webview directories
+# set up flowd init script for runit (in /etc/service/flowd/run)
 #
 RUN  cd ~/wvnetflow-1.07d \
-  && ls -al \
-  && sudo mkdir -p /opt/netflow/tmp \
-  && sudo mkdir -p /opt/netflow/data \
-  && sudo mkdir -p /opt/netflow/cache \
-  && sudo mkdir -p /opt/netflow/capture \
-  && sudo chown -R $USERACCT:$USERACCT /opt/netflow \
-  && sudo mkdir -p /usr/local/webview \
-  && sudo cp -Rp flowage www utils /usr/local/webview \
-  && sudo cp etc/webview.conf /etc \
-  && sudo chown www-data:www-data /etc/webview.conf \
-  && sudo chmod 777 /usr/local/webview/www/flow/graphs \
-  && sudo chown -R www-data:www-data /usr/local/webview/www/flow
+  && cp etc/flowd-2055.conf /usr/local/etc/ \
+  && mkdir /etc/service/flowd \
+  && touch /var/log/flowd
+COPY docker_scripts/flowd.sh /etc/service/flowd/run 
+RUN  chmod +x /etc/service/flowd/run 
 
 #
-# set up flowd init script
+# Set up web server
 #
-RUN  cd ~/wvnetflow-1.07d \
-  && sudo cp etc/flowd-2055.conf /usr/local/etc/ \
-  && sudo chown $USERACCT:$USERACCT /usr/local/etc/flowd-2055.conf  \
-  && sudo chown $USERACCT:$USERACCT /usr/local/etc/flowd.conf  \
-  && sudo cp etc/init.d/flowd-ubuntu /etc/init.d/flowd \
-  && sudo cp etc/init.d/flow-capture /etc/init.d/flow-capture \
-  # && sed -i.bak -e 's|/usr/local/netflow/bin/flow-capture|/usr/local/flow-tools/bin/flow-capture|' etc/init.d/flow-capture \
-  # && sudo cp etc/init.d/flow-capture /etc/init.d/flow-capture \
-  && sudo chmod 755 /etc/init.d/flowd \
-  && sudo ln -s /etc/init.d/flowd /etc/init.d/flowd-2055 
-  # && sudo update-rc.d flowd-2055 defaults 
-
-  # && service flowd-2055 start
-
-# (Note that multiple flowd init scripts and config files can coexist. The
-# "-number" is the port number of the listener. It's good form to use a different
-# listener port for each type of collection -- e.g., MPLS WAN routers might use
-# port 2055, while outside internet routers could use 2056 and data center
-# switches could use 2057).
-
-#
-# create crontab from wvnetflow commands
-WORKDIR $USERHOME
-COPY docker_scripts/newcron .
-RUN  crontab newcron
-  
-#
-# set up web server
-#
-RUN sudo sed -i.bak -e'/<\/VirtualHost>/ i \
+COPY docker_scripts/replacement-index.html /var/www/html/index.html
+RUN sed -i.bak -e'/<\/VirtualHost>/ i \
   Alias "/webview" "/usr/local/webview/www" \n\
   \n\
   <Directory /usr/local/webview/www> \n\
@@ -151,27 +127,23 @@ RUN sudo sed -i.bak -e'/<\/VirtualHost>/ i \
        AddHandler cgi-script .cgi \n\
   </Directory> \n\
 ' /etc/apache2/sites-available/000-default.conf \
-  && sudo a2enmod cgi
+  && a2enmod cgi \
+  && mkdir /etc/service/apache2
+COPY docker_scripts/apache.sh /etc/service/apache2/run 
+RUN chmod +x /etc/service/apache2/run
 
-# Manually set up the apache environment variables
-ENV APACHE_RUN_USER www-data
-ENV APACHE_RUN_GROUP www-data
-ENV APACHE_LOG_DIR /var/log/apache2
-ENV APACHE_LOCK_DIR /var/lock/apache2
-ENV APACHE_PID_FILE /var/run/apache2.pid
-
+#
+# create crontab from wvnetflow commands
+#
+WORKDIR $USERHOME
+COPY docker_scripts/newcron .
+RUN  crontab newcron
+  
 # Expose apache & netflow port
 EXPOSE 80
 EXPOSE 2055
 
-# Configure Startup Process
-WORKDIR /
-COPY docker_scripts/startup.sh . 
+# Clean up APT when done.
+RUN  apt-get clean \
+  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
 
-# Configure supervisord
-COPY docker_scripts/supervisord.conf /etc/supervisor/supervisord.conf
-RUN  sudo touch /var/log/supervisord.log \
-  && sudo chown wvnetflow:wvnetflow /var/log/supervisord.log
-
-# Fire off the startup script
-CMD ["sh", "/startup.sh"]

@@ -11,21 +11,21 @@ sudo /usr/bin/supervisord -c /etc/supervisor/supervisord.conf
 # # start flowd
 # sudo /etc/init.d/flowd start &
 # status = $?
-# echo "Started flowd: '$status'"# 
+# echo "Started flowd: '$status'"# # 
 
 # # start flow-capture
-# # /etc/init.d/flow-capture start &
-# # status = $?
-# # echo "Started flow-capture: '$status'"# 
-
-# # start cron
-# sudo /usr/sbin/cron &
+# /etc/init.d/flow-capture start &
 # status = $?
-# echo "Started cron: '$status'"# 
+# echo "Started flow-capture: '$status'"# # 
 
-# # enable CGI, then start apache
-# sudo a2enmod cgi
-# sudo /usr/sbin/apache2ctl -D FOREGROUND &
+# # # start cron
+# # sudo /usr/sbin/cron &
+# # status = $?
+# # echo "Started cron: '$status'"# # 
+
+# # # enable CGI, then start apache
+# # sudo a2enmod cgi
+# /usr/sbin/apache2ctl -D FOREGROUND &
 # status = $?
 # echo "Started apache: '$status'"# 
 
