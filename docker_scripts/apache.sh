@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # apache control script
-apachectl restart
+/usr/sbin/apache2ctl -D FOREGROUND &
