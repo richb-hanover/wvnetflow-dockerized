@@ -20,31 +20,32 @@ If you try it out, please file an issue and let me know how it worked for you.*
 
 1. Install [Docker](https://www.docker.com/community-edition) (the Community Edition works fine) on a computer that's always running. wvnetflow will run there and collect the netflow data 24x7.
 
-1. Clone the *wvnetflow-dockerized* repo to that computer.
+2. Clone the *wvnetflow-dockerized* repo to that computer.
  
     ```
     $ git clone https://github.com/richb-hanover/wvnetflow-dockerized.git
     ``` 
-2. Build the container from the Dockerfile, giving it the name *wvnr_img*
+3. Build the container from the Dockerfile, giving it the name *wvnr_img*. 
+This can take many minutes, since many files need to be downloaded and installed.
 
     ```
     $ cd wvnetflow-dockerized
     $ docker build -t wvnr_img .
     ```
-3. Run the container named *wvnr_img*. This will print a container-ID on the console.
+4. Run the container named *wvnr_img*. This will print a container-ID on the console.
 
     ```
-  $ docker run -d -p 83:80 -p 2055:2055/udp --name wvnr_img wvnr_img
-9c1b567e0aba007368ed062d4aa226675fa1e011600cdf59593d42a689d05034
+    $ docker run -d -p 83:80 -p 2055:2055/udp --name wvnr_img wvnr_img
+    9c1b567e0aba007368ed062d4aa226675fa1e011600cdf59593d42a689d05034
     ```
 
-5. Point your web browser to [http://localhost:83](http://localhost:83/) You will see the Webview Netflow Reporter home page. (**Note:** The `docker run...` command above maps external port 83 to the docker container's web port 80.)
+5. Point your web browser to [http://localhost:83](http://localhost:83/) You will see the Webview Netflow Reporter home page. (**Note:** The `docker run...` command above maps external port 83 to the docker container's web port 80.) The **Troubleshooting** section gives more explanation about this page.
 
    <img src="https://github.com/richb-hanover/wvnetflow-dockerized/raw/master/images/wvnetflow-home.png" width="500" />
 
-7. Configure your router(s) to export Netflow version 5 flows to port 2055 on this collector, or generate mock flow data (see below). 
+6. Configure your router(s) to export Netflow version 5 flows to port 2055 on this collector, or generate mock flow data (see below). 
 
-8. **Wait...** It can take many minutes before the flow data has been collected and displayed. Read the Troubleshootings steps (below) to see if the machinery is working...
+7. **Wait...** It can take many minutes before the flow data has been collected and displayed. Read the Troubleshootings steps (below) to see if the machinery is working...
 
 ### QuickStart - Other setup information and tests
 
@@ -81,13 +82,18 @@ In the list should be the Apache port if no other process was already bound to t
 
 ### Troubleshooting
 
-This information is a brief, but not complete, description of the facilities. 
+This information is a brief, but not complete, description of the facilities. Read the [wvnetflow](http://wvnetflow.sourceforge.net/) for more details.
 
-1. The [webview status](http://localhost:83/webview/flow/weblog.cgi) link on the home page displays a number of stats about the wvnetflow server's operation.
+1. The [Netflow Traffic Analysis](http://localhost:83/webview/flow/render.cgi) button allows you to select which traffic to view. 
+(Requires that the container run for at least 5-15 minutes before traffic is shown.)
 
-2. The [flow stats](http://localhost:83/webview/flow/exporter.cgi) page lists the exporters that are providing netflow data.
+2. The [Netflow Ad Hoc Query Tool](http://localhost:83/webview/flow/adhoc.cgi) lets you build queries to view the netflow data in different ways.
 
-3. The [flowage.cfg](http://localhost:83/webview/flow/configdump.cgi) page shows the configuration file for the /usr/local/webview/flowage/flowage.pl program that drives wvnetflow.
+3. The [webview status](http://localhost:83/webview/flow/weblog.cgi) link on the home page displays a number of stats about the wvnetflow server's operation.
+
+4. The [flow stats](http://localhost:83/webview/flow/exporter.cgi) page lists the exporters that are providing netflow data.
+
+5. The [flowage.cfg](http://localhost:83/webview/flow/configdump.cgi) page shows the configuration file for the /usr/local/webview/flowage/flowage.pl program that drives wvnetflow.
 
 ### Modifying the Docker Image ###
 

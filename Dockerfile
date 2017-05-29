@@ -41,6 +41,7 @@ RUN apt-get update && apt-get -y install \
     nano \
     rrdtool \
     tcpdump \
+    unzip \
     wget \
     zlib1g-dev
 
@@ -56,9 +57,10 @@ WORKDIR $USERHOME
 # create directories and install the wvnetflow files into /usr/local/webview directories
 #
 RUN cd ~ \
-  && wget https://iweb.dl.sourceforge.net/project/wvnetflow/wvnetflow/wvnetflow-1.07d.tar.gz \
-  && gunzip -c wvnetflow-1.07d.tar.gz | tar -xf - \
-  && cd ~/wvnetflow-1.07d \
+  # && wget https://iweb.dl.sourceforge.net/project/wvnetflow/wvnetflow/wvnetflow-1.07d.tar.gz \
+  && wget https://github.com/richb-hanover/wvnetflow/archive/master.zip \
+  && unzip -q master.zip \
+  && cd ~/wvnetflow-master \
   && mkdir -p /opt/netflow/tmp \
   && mkdir -p /opt/netflow/data \
   && mkdir -p /opt/netflow/cache \
@@ -66,9 +68,10 @@ RUN cd ~ \
   && chown -R $USERACCT:$USERACCT /opt/netflow \
   && mkdir -p /usr/local/webview \
   && cp -Rp flowage www utils /usr/local/webview \
-  && cp etc/webview.conf /etc \
+  && mkdir -p /usr/local/webview/www/flow/graphs \
   && chmod 777 /usr/local/webview/www/flow/graphs \
-  && chown -R www-data:www-data /usr/local/webview/www/flow
+  && chown -R www-data:www-data /usr/local/webview/www/flow \
+  && cp etc/webview.conf /etc 
 
 #
 # Install the flowd collector.
@@ -76,7 +79,7 @@ RUN cd ~ \
 #   (see http://code.google.com/r/cweinhold-flowd-sequence for more information).
 #
 
-RUN  cd ~/wvnetflow-1.07d \
+RUN  cd ~/wvnetflow-master \
   && wget http://iweb.dl.sourceforge.net/project/wvnetflow/flowd-sequence/cweinhold-flowd-sequence.tar.gz \
   && gunzip -c cweinhold-flowd-sequence.tar.gz | tar -xf - \
   && cd cweinhold-flowd-sequence \
@@ -91,7 +94,7 @@ RUN  cd ~/wvnetflow-1.07d \
 # This requires building from the flow-tools fork at https://code.google.com/p/flow-tools/.
 # (the relative directory structure for the next few steps is very important!)
 # Installed into /usr/local/flow-tools/
-RUN  cd ~/wvnetflow-1.07d \
+RUN  cd ~/wvnetflow-master \
      # file moved - no longer at: wget https://flow-tools.googlecode.com/files/flow-tools-0.68.5.1.tar.bz2
   && wget https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/flow-tools/flow-tools-0.68.5.1.tar.bz2 \
   && bzcat flow-tools-0.68.5.1.tar.bz2 | tar -xf - \
@@ -104,7 +107,7 @@ RUN  cd ~/wvnetflow-1.07d \
 #
 # set up flowd init script for runit (in /etc/service/flowd/run)
 #
-RUN  cd ~/wvnetflow-1.07d \
+RUN  cd ~/wvnetflow-master \
   && cp etc/flowd-2055.conf /usr/local/etc/ \
   && mkdir /etc/service/flowd \
   && touch /var/log/flowd
