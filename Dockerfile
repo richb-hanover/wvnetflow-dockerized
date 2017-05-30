@@ -61,7 +61,19 @@ RUN cd ~ \
   && wget https://github.com/richb-hanover/wvnetflow/archive/master.zip \
   && unzip -q master.zip \
   && ls -al \
-  && cd ~/wvnetflow-master 
+  && cd ~/wvnetflow-master \
+  && mkdir -p /opt/netflow/tmp \
+  && mkdir -p /opt/netflow/data \
+  && mkdir -p /opt/netflow/cache \
+  && mkdir -p /opt/netflow/capture \
+  && chown -R $USERACCT:$USERACCT /opt/netflow \
+  && mkdir -p /usr/local/webview \
+  && cp -Rp flowage www utils /usr/local/webview \
+  && mkdir -p /usr/local/webview/www/flow/graphs \
+  && chmod 777 /usr/local/webview/www/flow/graphs \
+  && chown -R www-data:www-data /usr/local/webview/www/flow \
+  && touch junk.html \
+  && cp etc/webview.conf /etc 
 
 #
 # Install the flowd collector.
@@ -103,24 +115,7 @@ RUN  cd ~/wvnetflow-master \
   && touch /var/log/flowd
 COPY docker_scripts/flowd.sh /etc/service/flowd/run 
 RUN  chmod +x /etc/service/flowd/run 
-
-#
-# Copy the wvnetflow-master files to the proper directories
-#
-RUN  cd ~/wvnetflow-master \
-  && mkdir -p /opt/netflow/tmp \
-  && mkdir -p /opt/netflow/data \
-  && mkdir -p /opt/netflow/cache \
-  && mkdir -p /opt/netflow/capture \
-  && chown -R $USERACCT:$USERACCT /opt/netflow \
-  && mkdir -p /usr/local/webview \
-  && cp -Rp flowage www utils /usr/local/webview \
-  && mkdir -p /usr/local/webview/www/flow/graphs \
-  && chmod 777 /usr/local/webview/www/flow/graphs \
-  && chown -R www-data:www-data /usr/local/webview/www/flow \
-  && touch junk.html \
-  && cp etc/webview.conf /etc 
-
+  
 #
 # Set up web server
 #
