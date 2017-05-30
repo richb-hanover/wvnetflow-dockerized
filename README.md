@@ -7,7 +7,7 @@ displays the collected data in a web interface.
 This screenshot shows off the varying data sent through a router.
 
 ![wvnetflow screen shot](https://github.com/richb-hanover/wvnetflow-dockerized/raw/master/images/wvnetflow-screenshot.png)
-For more information and screenshots, see [wvnetflow](http://wvnetflow.sourceforge.net/) hosted at [SourceForge.net](SourceForge.net)
+There is much more information in the `docs` directory, and on the original [wvnetflow](http://wvnetflow.sourceforge.net/) site hosted at [SourceForge.net](SourceForge.net)
 
 *Testing Status: This container has been tested with 
 Docker Community Edition Version 17.03.1-ce-mac5 (16048) 
@@ -25,7 +25,7 @@ If you try it out, please file an issue and let me know how it worked for you.*
     ```
     $ git clone https://github.com/richb-hanover/wvnetflow-dockerized.git
     ``` 
-3. Build the container from the Dockerfile, giving it the name *wvnr_img*. 
+3. Build the container from the Dockerfile. The commands below build it with the name *wvnr_img*. 
 This can take many minutes, since many files need to be downloaded and installed.
 
     ```
@@ -39,32 +39,62 @@ This can take many minutes, since many files need to be downloaded and installed
     9c1b567e0aba007368ed062d4aa226675fa1e011600cdf59593d42a689d05034
     ```
 
-5. Point your web browser to [http://localhost:83](http://localhost:83/) You will see the Webview Netflow Reporter home page. (**Note:** The `docker run...` command above maps external port 83 to the docker container's web port 80.) The **Troubleshooting** section gives more explanation about this page.
+5. Point your web browser to [http://localhost:83](http://localhost:83/) You will see the Webview Netflow Reporter home page. Notes:
+
+   * The `docker run...` command above maps external port 83 to the docker container's web port 80. Change it to use a different external port if needed.
+   * If you installed the Docker container on a separate computer, use the IP address of the computer where you're running wvnetflow.
 
    <img src="https://github.com/richb-hanover/wvnetflow-dockerized/raw/master/images/wvnetflow-home.png" width="500" />
 
-6. Configure your router(s) to export Netflow version 5 flows to port 2055 on this collector, or generate mock flow data (see below). 
+6. Configure your router to export Netflow version 5 flows to port 2055 of the collector. 
 
-7. **Wait...** It can take many minutes before the flow data has been collected and displayed. Read the Troubleshootings steps (below) to see if the machinery is working...
+7. **Wait...** It can take 15 minutes before the flow data has been collected and charted. See the Status page (below) for progress information.
 
-### QuickStart - Other setup information and tests
+### Quick Start - Home page
 
-* To connect to the container via a terminal, use this command:
+This information describes the links in the header bar. Read the `docs` and [wvnetflow](http://wvnetflow.sourceforge.net/) page for more details.
+
+1. [Analysis](http://localhost:83/webview/flow/render.cgi) provides a GUI to select which traffic to chart. 
+(Requires that the container run for at least 5-15 minutes before traffic is shown.)
+
+2. [Ad Hoc Query](http://localhost:83/webview/flow/adhoc.cgi) lets you build queries to view the netflow data in different ways.
+
+3. [Configuration](http://localhost:83/webview/flow/configdump.cgi) shows the configuration file for the /usr/local/webview/flowage/flowage.pl program that drives wvnetflow.
+ 
+4. [Exporters](http://localhost:83/webview/flow/exporter.cgi) lists the exporters that are providing netflow data.
+
+5. [Status](http://localhost:83/webview/flow/weblog.cgi) displays running statistics about the wvnetflow server. It will take up to five minutes before the **Flowage Activity Log** shows entries. 
+
+6. [About](https://github.com/richb-hanover/wvnetflow-dockerized) leads to the github page that hosts the repository.
+
+### Modifying the Docker Image
+
+* Build the docker container. This creates an image named *wvnr_img*
+
+   ```
+   $ cd <folder-containing-wvnetflow-Dockerfile>
+   $ docker build -t wvnr_img . 
+   ```
+
+* Run that newly-built image, and listen on port 83 for browser connections, and port 2055 for netflow records:
+
+   ```
+   $ docker run -d -p 83:80 -p 2055:2055/udp --name wvnr_img wvnr_img
+   ```
+
+* Add "-d" in the command above to daemonize the container when you run it (e.g., `docker run -d -p ...`) This allows you to continue working in the same terminal window. 
+
+* Connect to the container via a terminal (like ssh), if you want to "look around" inside the container. This is not required: wvnetflow is already running and collecting data.
 
     ```
     $ docker exec -i -t wvnr_img /bin/bash
     ```
-* Add "-d" to daemonize the container when you run it (e.g., `docker run -d -p ...`) This allows you to continue working in the same terminal window. 
 
-* To make a change to the container, stop it with the command below (this removes the "wvnr_img" name), edit the Dockerfile, then rebuild and `docker run`...
+* To make a change to the container, stop it with the command below (this removes the *wvnr_img* name), edit the Dockerfile, then rebuild and `docker run`...
 
     ```
     $ docker rm -f wvnr_img
     ```
-* The container opens these ports:
-
-  * Apache default port `EXPOSE 80`
-  * NetFlow default port `EXPOSE 2055`
   
 * Verify the port bindings between internal ports (2055 & 80) and their external mappings using `docker port image_name`
 
@@ -74,67 +104,13 @@ This can take many minutes, since many files need to be downloaded and installed
    80/tcp -> 0.0.0.0:83
    ```
 
-### QuickStart - www access
+## Known Issues
 
-In the list should be the Apache port if no other process was already bound to the port and now point your browser at the container like so (*Note* there will not be any flows in the RRD graphs until we generate some in the next section):
+1. This program only listens for a single netflow exporter sending to port 2055. 
+This works great in a home networking environment, 
+with a single router managing the bottleneck link to the ISP, 
+and where you want to know "who's hogging the network".
 
-    http://localhost:83/  # or use your computer's IP address
-
-### Troubleshooting
-
-This information is a brief, but not complete, description of the facilities. Read the [wvnetflow](http://wvnetflow.sourceforge.net/) for more details.
-
-1. The [Netflow Traffic Analysis](http://localhost:83/webview/flow/render.cgi) button allows you to select which traffic to view. 
-(Requires that the container run for at least 5-15 minutes before traffic is shown.)
-
-2. The [Netflow Ad Hoc Query Tool](http://localhost:83/webview/flow/adhoc.cgi) lets you build queries to view the netflow data in different ways.
-
-3. The [webview status](http://localhost:83/webview/flow/weblog.cgi) link on the home page displays a number of stats about the wvnetflow server's operation.
-
-4. The [flow stats](http://localhost:83/webview/flow/exporter.cgi) page lists the exporters that are providing netflow data.
-
-5. The [flowage.cfg](http://localhost:83/webview/flow/configdump.cgi) page shows the configuration file for the /usr/local/webview/flowage/flowage.pl program that drives wvnetflow.
-
-### Modifying the Docker Image ###
-
-This is a Docker container. The following commands are useful:
-
-```
-
-# build the container
-$ cd <folder-containing-wvnetflow>
-$ docker build -t wvnr_img . 
-
-# run the container, listening on external ports 83 for http and 22055 for netflow records
-# Connect your web browser to http://localhost:83/webview
-$ docker run -d -p 83:80 -p 22055:2055/udp --name wvnr_img wvnr_img
-
-# 'ssh' into the container so you can look around
-$ docker exec -i -t wvnr_img /bin/bash
-
-# When you're done (or want to modify the Dockerfile)...
-# This removes the name 'wvnr_img' for re-use with next docker run...
-$ docker rm -f wvnr_img
-```
-
-----------
-
-## Provisional information - not well tested
-### QuickStart - generate and view mock flows
-
-There is a Go based netflow generator. It's at [https://github.com/nerdalert/nflow-generator](https://github.com/nerdalert/nflow-generator)
-
-Note: The flow generator will at some point support choosing what protos and other parameters, but for now it just generates a handful of protocols and the same src/dst netflow payload addresses. As a result some of the protocol filters will be empty in the included protocol filters as seen in the following following screenshots.
-
-Run the generator against the localhost with the following:
-
-```
-  $ flow-generator  -t 127.0.0.1 -p 2055
-```
-
-or 
-
-```
-docker run -it --rm networkstatic/nflow-generator -t <ip> -p <port>
-```
+   Because of the current Docker networking setup, this container cannot distinguish between multiple exporters sending flows. 
+   I have not tested alternate setups (e.g., host network vs. bridge network) to see how this might change.
 
