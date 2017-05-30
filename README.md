@@ -55,7 +55,8 @@ This can take many minutes, since many files need to be downloaded and installed
 This information describes the links in the header bar. Read the `docs` and [wvnetflow](http://wvnetflow.sourceforge.net/) page for more details.
 
 1. [Analysis](http://localhost:83/webview/flow/render.cgi) provides a GUI to select which traffic to chart. 
-(Requires that the container run for at least 5-15 minutes before traffic is shown.)
+See the Traffic Analysis screen shot below for details.
+(The container must run and receive flow records for at least 5-15 minutes before traffic can be graphed.)
 
 2. [Ad Hoc Query](http://localhost:83/webview/flow/adhoc.cgi) lets you build queries to view the netflow data in different ways.
 
@@ -66,6 +67,17 @@ This information describes the links in the header bar. Read the `docs` and [wvn
 5. [Status](http://localhost:83/webview/flow/weblog.cgi) displays running statistics about the wvnetflow server. It will take up to five minutes before the **Flowage Activity Log** shows entries. 
 
 6. [About](https://github.com/richb-hanover/wvnetflow-dockerized) leads to the github page that hosts the repository.
+
+### Traffic Analysis
+
+The GUI for creating and displaying netflow data has many controls. 
+To see the most recent data received, use the defaults, and:
+
+* Click the `Local` exporter (in Interfaces section)
+* Select a duration ("Day" in the image)
+* Click "Graph" to display the data. 
+
+<img src="https://github.com/richb-hanover/wvnetflow-dockerized/raw/master/images/wvnetflow-analysis.png" width="500" />
 
 ### Modifying the Docker Image
 
@@ -104,7 +116,7 @@ This information describes the links in the header bar. Read the `docs` and [wvn
    80/tcp -> 0.0.0.0:83
    ```
 
-## Known Issues
+## Known Issues/Questions
 
 1. This program only listens for a single netflow exporter sending to port 2055. 
 This works great in a home networking environment, 
@@ -114,3 +126,16 @@ and where you want to know "who's hogging the network".
    Because of the current Docker networking setup, this container cannot distinguish between multiple exporters sending flows. 
    I have not tested alternate setups (e.g., host network vs. bridge network) to see how this might change.
 
+2. By default, this wvnetflow container treats all private internet (RFC1918) address ranges 
+(10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/4) as "local", 
+and all other addresses as remote. 
+This allows the Applications graph to distinguish between "in" and "out" traffic. 
+(This is perfect for a single router in a home network.)
+Change this by editing the `/usr/local/webview/flowage/flowage.cfg` file. 
+
+3. The `flowage.pl` program currently runs every five minutes. 
+This means that the data displayed in the graphs can be as much as 10 minutes old. 
+For small installations (with a single exporter), it would be good to make the charts display data that's only one minute old. 
+(This setting might impose too much load on large installations that have many exporters and high traffic rates.)
+
+4. The current source code for wvnetflow is saved in a separate Github repo at: [https://github.com/richb-hanover/wvnetflow](https://github.com/richb-hanover/wvnetflow)
