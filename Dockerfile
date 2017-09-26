@@ -56,12 +56,11 @@ WORKDIR $USERHOME
 # Retrieve, gunzip and untar the wvnetflow distribution 
 # create directories and install the wvnetflow files into /usr/local/webview directories
 #
-RUN cd ~ \
-  # && wget https://iweb.dl.sourceforge.net/project/wvnetflow/wvnetflow/wvnetflow-1.07d.tar.gz \
+# Orig source code at: wget https://iweb.dl.sourceforge.net/project/wvnetflow/wvnetflow/wvnetflow-1.07d.tar.gz 
+RUN cd $USERHOME \
   && wget https://github.com/richb-hanover/wvnetflow/archive/master.zip \
   && unzip -q master.zip \
-  && ls -al \
-  && cd ~/wvnetflow-master \
+  && cd wvnetflow-master \
   && mkdir -p /opt/netflow/tmp \
   && mkdir -p /opt/netflow/data \
   && mkdir -p /opt/netflow/cache \
@@ -80,9 +79,10 @@ RUN cd ~ \
 # Webview uses a fork of the flowd source with improvements for logging and sequence number handling
 #   (see http://code.google.com/r/cweinhold-flowd-sequence for more information).
 #
-
-RUN  cd ~/wvnetflow-master \
-  && wget http://iweb.dl.sourceforge.net/project/wvnetflow/flowd-sequence/cweinhold-flowd-sequence.tar.gz \
+  ## Don't rely on sourceforge any more...
+  ## && wget http://iweb.dl.sourceforge.net/project/wvnetflow/flowd-sequence/cweinhold-flowd-sequence.tar.gz \
+COPY docker_scripts/cweinhold-flowd-sequence.tar.gz .
+RUN cd $USERHOME \
   && gunzip -c cweinhold-flowd-sequence.tar.gz | tar -xf - \
   && cd cweinhold-flowd-sequence \
   && ./configure \
@@ -94,14 +94,16 @@ RUN  cd ~/wvnetflow-master \
 #
 # Install flow-tools and Cflow.pm.
 # This requires building from the flow-tools fork at https://code.google.com/p/flow-tools/.
-# (the relative directory structure for the next few steps is very important!)
+#   and patching from the wvnetflow-master patch file...
 # Installed into /usr/local/flow-tools/
-RUN  cd ~/wvnetflow-master \
-     # file moved - no longer at: wget https://flow-tools.googlecode.com/files/flow-tools-0.68.5.1.tar.bz2
+
+# file moved - no longer at: wget https://flow-tools.googlecode.com/files/flow-tools-0.68.5.1.tar.bz2
+WORKDIR $USERHOME 
+RUN cd $USERHOME \
   && wget https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/flow-tools/flow-tools-0.68.5.1.tar.bz2 \
   && bzcat flow-tools-0.68.5.1.tar.bz2 | tar -xf - \
   && cd flow-tools-0.68.5.1/ \
-  && patch -p1 <../optional-accessories/flow-tools-patches/patch.flow-tools.scan-and-hash \
+  && patch -p1 <../wvnetflow-master/optional-accessories/flow-tools-patches/patch.flow-tools.scan-and-hash \
   && ./configure \
   && make \
   && make install 
@@ -109,8 +111,8 @@ RUN  cd ~/wvnetflow-master \
 #
 # set up flowd init script for runit (in /etc/service/flowd/run)
 #
-RUN  cd ~/wvnetflow-master \
-  && cp etc/flowd-2055.conf /usr/local/etc/ \
+COPY etc/flowd-2055.conf /usr/local/etc/ 
+RUN  cd $USERHOME \
   && mkdir /etc/service/flowd \
   && touch /var/log/flowd
 COPY docker_scripts/flowd.sh /etc/service/flowd/run 
@@ -122,7 +124,6 @@ RUN  chmod +x /etc/service/flowd/run
 COPY docker_scripts/replacement-index.html /var/www/html/index.html
 RUN sed -i.bak -e'/<\/VirtualHost>/ i \
   Alias "/webview" "/usr/local/webview/www" \n\
-  \n\
   <Directory /usr/local/webview/www> \n\
        Options Indexes Includes FollowSymLinks ExecCGI \n\
        # order allow,deny \n\
@@ -150,4 +151,10 @@ EXPOSE 2055
 
 # Clean up APT when done.
 RUN  apt-get clean \
-  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+  && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+  && rm cweinhold-flowd-sequence.tar.gz \
+  && rm -rf cweinhold-flowd-sequence \
+  && rm flow-tools-0.68.5.1.tar.bz2 \
+  && rm -rf flow-tools-0.68.5.1 \
+  && rm master.zip \
+  && rm -rf wvnetflow-master 
