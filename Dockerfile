@@ -45,6 +45,9 @@ RUN apt-get update && apt-get -y install \
     wget \
     zlib1g-dev
 
+# time zone
+RUN apt-get install -y tzdata
+
 # add the CPAN CGI module
 RUN cpanm CGI 
 
