@@ -24,8 +24,13 @@
 0 0 1 * * /usr/local/bin/sudo mv -f /var/log/flowd2ft-2055.log /var/log/flowd2ft-2055.old
 0 0 1 * * /usr/local/bin/sudo mv -f /var/log/monFlows.log /var/log/monFlows.old
 
-# Every minute, write a log entry
-* * * * * echo "Cron test"  2>&1
+# every minute, write a log entry
+# * * * * * echo "Cron test"  2>&1
+# uncomment if you need this for testing
 
+# every hour, delete the lock file if it exists
+0 * * * * rm -f /opt/netflow/tmp/flowage.lck
+# stale lock files will cause flowage.pl to stop running completely
 
 # LAST LINE - crontab files need a CRLF at the end
+
