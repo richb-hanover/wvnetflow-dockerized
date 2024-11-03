@@ -1,0 +1,16 @@
+services:
+  wvnr:
+    build:
+      context: .
+    image: wvnr_img
+    container_name: wvnr_img
+    volumes:
+      - /path/to/your/netflow:/opt/netflow # Mount netflow data to a volume
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "83:80"
+      - "2055:2055/udp"
+    environment:
+      - TZ=America/New_York
+    restart: unless-stopped

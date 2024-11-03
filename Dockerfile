@@ -45,6 +45,9 @@ RUN apt-get update && apt-get -y install \
     wget \
     zlib1g-dev
 
+# time zone
+RUN apt-get install -y tzdata
+
 # add the CPAN CGI module
 RUN cpanm CGI 
 
@@ -137,6 +140,9 @@ RUN sed -i.bak -e'/<\/VirtualHost>/ i \
   && mkdir /etc/service/apache2
 COPY docker_scripts/apache.sh /etc/service/apache2/run 
 RUN chmod +x /etc/service/apache2/run
+
+# Set the ServerName directive to suppress Apache error
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 #
 # create crontab from wvnetflow commands
