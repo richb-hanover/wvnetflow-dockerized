@@ -1,56 +1,67 @@
 # Overview - Webview Netflow Reporter
 
-A lightweight Netflow collector and web display tool based on wvnetflow and flow-tools in a Docker container. Webview Netflow Reporter was created by Craig Weinhold craig.weinhold@cdw.com. 
+A lightweight NetFlow collector and web display tool based on wvnetflow and flow-tools in a Docker container. **Webview Netflow Reporter** was created by [Craig Weinhold](craig.weinhold@cdw.com).
 
-This container listens on ports 2055 for netflow exports, and 
-displays the collected data in a web interface.
-This screenshot shows off the varying data sent through a router.
+This container listens on port 2055 for NetFlow exports and displays the collected data in a web interface.
 
-![wvnetflow screen shot](https://github.com/richb-hanover/wvnetflow-dockerized/raw/master/images/wvnetflow-screenshot.png)
+![wvnetflow screen shot](./images/wvnetflow-screenshot.png)
+
 There is much more information in the `docs` directory, and on the original [wvnetflow](http://wvnetflow.sourceforge.net/) site hosted at [SourceForge.net](SourceForge.net)
 
-*Testing Status: This container has been tested with 
-Docker Community Edition Version 17.03.1-ce-mac5 (16048) 
-running on a mid-2011 Mac mini, OSX 10.12.4, 
-with a 2.3 GHz Intel Core i5 processor and 8 GBytes RAM. 
-It works great with my LEDE/OpenWrt router after installing the softflowd package to export netflow info.
-If you try it out, please file an issue and let me know how it worked for you.* 
+_Current Version: wvnetflow v1.0.7d (latest version as of 2013)_
 
-### QuickStart - Install and Test Webview Netflow Reporter
+## QuickStart - Installation and Setup
 
-1. Install [Docker](https://www.docker.com/community-edition) (the Community Edition works fine) on a computer that's always running. wvnetflow will run there and collect the netflow data 24x7.
+### Prerequisites
 
-2. Clone the *wvnetflow-dockerized* repo to that computer.
- 
-    ```
-    $ git clone https://github.com/richb-hanover/wvnetflow-dockerized.git
-    ``` 
-3. Build the container from the Dockerfile. The commands below build it with the name *wvnr_img*. 
-This can take many minutes, since many files need to be downloaded and installed.
+* [Docker](https://www.docker.com/) must be installed on the system where you’ll run Webview Netflow Reporter.
+* Docker Compose is optional but recommended for managing the container setup more easily.
 
-    ```
-    $ cd wvnetflow-dockerized
-    $ docker build -t wvnr_img .
-    ```
-4. Run the container named *wvnr_img*. This will print a container-ID on the console.
+### Steps
 
-    ```
-    $ docker run -d -p 83:80 -p 2055:2055/udp --name wvnr_img wvnr_img
-    9c1b567e0aba007368ed062d4aa226675fa1e011600cdf59593d42a689d05034
+1. **Clone the Repository**
+
+    Clone the `wvnetflow-dockerized` repository to your computer:
+
+    ```sh
+    git clone https://github.com/richb-hanover/wvnetflow-dockerized.git
+    cd wvnetflow-dockerized
     ```
 
-5. Point your web browser to [http://localhost:83](http://localhost:83/) You will see the Webview Netflow Reporter home page. Notes:
+2. **Choose a Setup Method**
 
-   * The `docker run...` command above maps external port 83 to the docker container's web port 80. Change it to use a different external port if needed.
-   * If you installed the Docker container on a separate computer, use the IP address of the computer where you're running wvnetflow.
+    * **Using Docker CLI**
 
-   <img src="https://github.com/richb-hanover/wvnetflow-dockerized/raw/master/images/wvnetflow-home.png" width="500" />
+        Build the container with the name `wvnr_img` and start it with the following commands:
 
-6. Configure your router to export Netflow version 5 flows to port 2055 of the collector. 
+        ```sh
+        docker build -t wvnr_img .
+        docker run -d -p 83:80 -p 2055:2055/udp --name wvnr_img wvnr_img
+        ```
 
-7. **Wait...** It can take 15 minutes before the flow data has been collected and charted. See the Status page (below) for progress information.
+    * **Using Docker Compose**
 
-### Quick Start - Home page
+        If you prefer Docker Compose, a `docker-compose.yml` file is provided. Open it and update the volume path `/path/to/your/netflow` to a directory where you want NetFlow data to be stored on your system, then start the container:
+
+        ```sh
+        docker compose up -d
+        ```
+
+3. **Access the Web Interface**
+
+    Once the container is running, go to http://localhost:83 (or use the IP address of your Docker host if accessing from a different device).
+
+    ![wvnetflow screen shot](./images/wvnetflow-home.png)
+
+4. **Configure Your Router to Export NetFlow Data**
+
+    Set up your router or device to send NetFlow v5 data to port 2055 of the Docker host.
+
+5. **Allow Time for Data Collection**
+
+    It may take 5-15 minutes for data to appear in the interface.
+
+## Quick Start - Home page
 
 This information describes the links in the header bar. Read the `docs` and [wvnetflow](http://wvnetflow.sourceforge.net/) page for more details.
 
@@ -68,7 +79,7 @@ See the Traffic Analysis screen shot below for details.
 
 6. [About](https://github.com/richb-hanover/wvnetflow-dockerized) leads to the github page that hosts the repository.
 
-### Traffic Analysis
+## Traffic Analysis
 
 The GUI for creating and displaying netflow data has many controls. 
 To see the most recent data received, use the defaults, and:
@@ -77,65 +88,74 @@ To see the most recent data received, use the defaults, and:
 * Select a duration ("Day" in the image)
 * Click "Graph" to display the data. 
 
-<img src="https://github.com/richb-hanover/wvnetflow-dockerized/raw/master/images/wvnetflow-analysis.png" width="500" />
+    ![wvnetflow screen shot](./images/wvnetflow-analysis.png)
 
-### Modifying the Docker Image
+## Managing the Container
 
-* Build the docker container. This creates an image named *wvnr_img*
+### Accessing the Container Shell
 
-   ```
-   $ cd <folder-containing-wvnetflow-Dockerfile>
-   $ docker build -t wvnr_img . 
-   ```
+To open a terminal session within the container, use:
 
-* Run that newly-built image, and listen on port 83 for browser connections, and port 2055 for netflow records:
+```sh
+docker exec -it wvnr_img /bin/bash
+```
 
-   ```
-   $ docker run -d -p 83:80 -p 2055:2055/udp --name wvnr_img wvnr_img
-   ```
+### Updating the Container
 
-* Add "-d" in the command above to daemonize the container when you run it (e.g., `docker run -d -p ...`) This allows you to continue working in the same terminal window. 
+If you make changes to the Dockerfile:
 
-* Connect to the container via a terminal (like ssh), if you want to "look around" inside the container. This is not required: wvnetflow is already running and collecting data.
+1. **With Docker CLI**
 
+    Stop and remove the current container, rebuild, and run:
+
+    ```sh
+    docker rm -f wvnr_img
+    docker build -t wvnr_img .
+    docker run -d -p 83:80 -p 2055:2055/udp --name wvnr_img wvnr_img
     ```
-    $ docker exec -i -t wvnr_img /bin/bash
+
+2. **With Docker Compose**
+
+    Use the following commands to update and restart the container:
+
+    ```sh
+    docker compose down
+    docker compose up --build -d
     ```
 
-* To make a change to the container, stop it with the command below (this removes the *wvnr_img* name), edit the Dockerfile, then rebuild and `docker run`...
+### Verifying Port Mappings
 
-    ```
-    $ docker rm -f wvnr_img
-    ```
-  
-* Verify the port bindings between internal ports (2055 & 80) and their external mappings using `docker port image_name`
+Confirm that the container’s internal ports (2055 & 80) are mapped correctly:
 
-   ```
-   $ docker port wvnr_img
-   2055/udp -> 0.0.0.0:2055
-   80/tcp -> 0.0.0.0:83
-   ```
+```sh
+docker port wvnr_img
+```
+
+Expected output:
+
+```sh
+2055/udp -> 0.0.0.0:2055
+80/tcp -> 0.0.0.0:83
+```
+
+If you’re using `docker compose`, ensure the port mappings in `docker-compose.yml` match your intended setup.
 
 ## Known Issues/Questions
 
-1. This program only listens for a single netflow exporter sending to port 2055. 
-This works great in a home networking environment, 
-with a single router managing the bottleneck link to the ISP, 
-and where you want to know "who's hogging the network".
+1. **Single Exporter Limitation**
 
-   Because of the current Docker networking setup, this container cannot distinguish between multiple exporters sending flows. 
-   I have not tested alternate setups (e.g., host network vs. bridge network) to see how this might change.
+    This program is designed to listen for NetFlow data from a single physical exporter device on port 2055. In a typical home networking setup, where flows come from a single router managing the network’s connection to the ISP, this works well to capture network activity and analyze traffic usage.
 
-2. By default, this wvnetflow container treats all private internet (RFC1918) address ranges 
-(10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 224.0.0.0/4) as "local", 
-and all other addresses as remote. 
-This allows the Applications graph to distinguish between "in" and "out" traffic. 
-(This is perfect for a single router in a home network.)
-Change this by editing the `/usr/local/webview/flowage/flowage.cfg` file. 
+    However, if flows are sent from multiple devices to the container (e.g., multiple routers or switches), the current Docker networking configuration may not distinguish between the sources, potentially affecting data accuracy. Using multiple interfaces from a single device to send flows (e.g., LAN, guest, and WAN interfaces on the same router) should work as expected.
 
-3. The `flowage.pl` program currently runs every five minutes. 
-This means that the data displayed in the graphs can be as much as 10 minutes old. 
-For small installations (with a single exporter), it would be good to make the charts display data that's only one minute old. 
-(This setting might impose too much load on large installations that have many exporters and high traffic rates.)
+2. **Local vs. Remote Address Distinction**
 
-4. The current source code for wvnetflow is saved in a separate Github repo at: [https://github.com/richb-hanover/wvnetflow](https://github.com/richb-hanover/wvnetflow)
+    By default, this container treats all private (RFC1918) IP ranges—such as 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, and 224.0.0.0/4—as "local" traffic, while all other IPs are considered "remote." This distinction helps the Applications graph display "in" and "out" traffic accurately, especially in a home network environment with a single router. This behavior can be modified by adjusting the `/usr/local/webview/flowage/flowage.cfg` file.
+
+3. **Data Refresh Interval**
+
+    The `flowage.pl` program runs every five minutes, so the graphs might reflect data that is up to 10 minutes old. For setups with a single exporter and lower traffic volumes, decreasing this interval may make the charts more current. Be cautious about lowering the interval in high-traffic environments or with multiple exporters, as it could increase the processing load significantly.
+
+4. **Source Code**
+
+    The current source code for `wvnetflow` is hosted at https://github.com/richb-hanover/wvnetflow.

@@ -9,8 +9,8 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     ports:
-      - "83:80"
+      - "83:80" # If you want to access this from a different port on the host, change the first number (83)
       - "2055:2055/udp"
     environment:
-      - TZ=America/New_York
+      - TZ=America/New_York # Update as necessary
     restart: unless-stopped
